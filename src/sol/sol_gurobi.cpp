@@ -136,10 +136,14 @@ void gurobi_t::solve(
             model.getEnv().set(GRB_DoubleParam_TimeLimit, timeout););
 
     int len = 1;
-    bool do_kbest = phillip()->flag("kbest");
+    bool do_kbest(false);
 
-    if(do_kbest)
-      len = phillip()->param_int("kbest_k", 1);
+    if(phillip() != NULL) {
+      do_kbest = phillip()->flag("kbest");
+
+      if(do_kbest)
+        len = phillip()->param_int("kbest_k", 2);
+    }
 
     for(int K=0; K<len; K++) {
 
