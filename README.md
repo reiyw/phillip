@@ -4,7 +4,7 @@ Phillip
 
 # About
 ----
-Phillip is the first-ordered abductive reasoner for natural language processing in C++.
+Phillip is the first-order abductive reasoner for natural language processing in C++.
 
 
 # Install
@@ -46,5 +46,3 @@ Besides each time you change the knowledge base, you need to compile it.
     $ bin/phil -m inference -c lhs=<NAME> -c ilp=<NAME> -c sol=<NAME> -k <KB_PREFIX> [OPTIONS] [INPUTS]
 
 In detail, please refer to [Phillip Wiki](https://github.com/kazeto/phillip/wiki).
-
-

@@ -136,13 +136,18 @@ void gurobi_t::solve(
             model.getEnv().set(GRB_DoubleParam_TimeLimit, timeout););
 
     int len = 1;
-    bool do_kbest(false);
+    bool do_kbest(false),
+      do_kbest_litwise(false),
+      do_kbest_unified_with_constant(false);
 
     if(phillip() != NULL) {
       do_kbest = phillip()->flag("kbest");
 
-      if(do_kbest)
+      if(do_kbest) {
         len = phillip()->param_int("kbest_k", 2);
+        do_kbest_litwise = phillip()->flag("kbest_litwise");
+        do_kbest_unified_with_constant = phillip()->flag("kbest_prohibit_unification_with_constant_only");
+      }
     }
 
     for(int K=0; K<len; K++) {
@@ -265,6 +270,14 @@ void gurobi_t::solve(
 
             for(auto eq = pNodes->begin(); eq != pNodes->end(); ++eq) {
               if(prob->node_is_active(last_sol, *eq) && (pg->node(*eq).is_equality_node() || pg->node(*eq).is_transitive_equality_node())) {
+
+                // Sometimes it concerns only unification with constants.
+                if(do_kbest_unified_with_constant) {
+                  if(!pg->node(*eq).literal().terms[0].is_constant() &&
+                    !pg->node(*eq).literal().terms[1].is_constant())
+                    continue;
+                }
+
                 strLiterals += pg->node(*eq).to_string() + " ";
                 con_suppress.add_term(prob->find_variable_with_node(*eq), 1.0);
               }
@@ -272,12 +285,21 @@ void gurobi_t::solve(
           }
 
           con_suppress.add_term(prob->find_variable_with_node(i), 1.0);
+
+          if(do_kbest_litwise) {
+            con_suppress.set_bound(con_suppress.terms().size() - 1.0);            _add_GRBconstraint(&model, con_suppress, vars);
+
+            con_suppress = ilp::constraint_t("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);
+          }
         }
 
         util::print_console_fmt("K-BEST: To be suppressed: %s",strLiterals.c_str());
-        con_suppress.set_bound(con_suppress.terms().size() - 1.0);
 
-        _add_GRBconstraint(&model, con_suppress, vars);
+        if(!do_kbest_litwise) {
+          con_suppress.set_bound(con_suppress.terms().size() - 1.0);
+          _add_GRBconstraint(&model, con_suppress, vars);
+        }
+
       } else break;
 
     }
