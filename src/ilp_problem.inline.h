@@ -84,7 +84,7 @@ inline void constraint_t::add_term( variable_idx_t var_idx, double coe )
     m_terms.push_back(t);
 }
 
-  
+
 inline bool constraint_t::is_satisfied(
     const std::vector<double> &lpsol_optimized_values) const
 {
@@ -192,7 +192,7 @@ inline void ilp_problem_t::add_xml_decorator(solution_xml_decorator_t *p_dec)
 {
     m_xml_decorators.push_back(p_dec);
 }
-  
+
 
 inline const std::string& ilp_problem_t::name() const
 {
@@ -294,6 +294,12 @@ inline constraint_t& ilp_problem_t::constraint(constraint_idx_t i)
 inline const pg::proof_graph_t* const ilp_problem_t::proof_graph() const
 {
     return m_graph;
+}
+
+
+inline solution_interpreter_t* ilp_problem_t::solution_interpreter() const
+{
+    return m_solution_interpreter;
 }
 
 

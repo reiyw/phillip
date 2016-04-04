@@ -20,6 +20,32 @@ namespace sol
 std::mutex g_mutex_gurobi;
 
 
+void _add_GRBconstraint(GRBModel *model, const ilp::constraint_t &c, const hash_map<ilp::variable_idx_t, GRBVar> &vars) {
+  std::string name = c.name().substr(0, 32);
+  GRBLinExpr expr;
+
+  for (auto t = c.terms().begin(); t != c.terms().end(); ++t)
+      expr += t->coefficient * vars.at(t->var_idx);
+
+  GRBEXECUTE(
+      switch (c.operator_type())
+      {
+      case ilp::OPR_EQUAL:
+          model->addConstr(expr, GRB_EQUAL, c.bound(), name);
+          break;
+      case ilp::OPR_LESS_EQ:
+          model->addConstr(expr, GRB_LESS_EQUAL, c.upper_bound(), name);
+          break;
+      case ilp::OPR_GREATER_EQ:
+          model->addConstr(expr, GRB_GREATER_EQUAL, c.lower_bound(), name);
+          break;
+      case ilp::OPR_RANGE:
+          model->addRange(expr, c.lower_bound(), c.upper_bound(), name);
+          break;
+      });
+}
+
+
 gurobi_t::gurobi_t(phillip_main_t *ptr, int thread_num, bool do_output_log)
     : ilp_solver_t(ptr), m_thread_num(thread_num), m_do_output_log(do_output_log)
 {
@@ -109,91 +135,132 @@ void gurobi_t::solve(
         if (timeout > 0)
             model.getEnv().set(GRB_DoubleParam_TimeLimit, timeout););
 
-    size_t num_loop(0);
-    while (true)
-    {
-        if (do_cpi)
-            util::print_console_fmt("begin: Cutting-Plane-Inference #%d", (num_loop++));
+    int len = 1;
+    bool do_kbest = phillip()->flag("kbest");
 
-        GRBEXECUTE(model.optimize());
+    if(do_kbest)
+      len = phillip()->param_int("kbest_k", 1);
 
-        if (model.get(GRB_IntAttr_SolCount) == 0)
-        {
-            if (model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE)
-            {
-                model.computeIIS();
-                GRBConstr *cons = model.getConstrs();
+    for(int K=0; K<len; K++) {
 
-                for (int i = 0; i < model.get(GRB_IntAttr_NumConstrs); ++i)
-                if (cons[i].get(GRB_IntAttr_IISConstr) == 1)
-                {
-                    std::string name(cons[i].get(GRB_StringAttr_ConstrName));
-                    util::print_warning("Infeasible: " + name);
-                }
+      size_t num_loop(0);
+      while (true)
+      {
+          if (do_cpi)
+              util::print_console_fmt("begin: Cutting-Plane-Inference #%d", (num_loop++));
 
-                delete[] cons;
-            }
+          GRBEXECUTE(model.optimize());
 
-            ilp::ilp_solution_t sol(
-                prob, ilp::SOLUTION_NOT_AVAILABLE,
-                std::vector<double>(prob->variables().size(), 0.0));
-            out->push_back(sol);
-            break;
+          if (model.get(GRB_IntAttr_SolCount) == 0)
+          {
+              if (model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE)
+              {
+                  model.computeIIS();
+                  GRBConstr *cons = model.getConstrs();
+
+                  for (int i = 0; i < model.get(GRB_IntAttr_NumConstrs); ++i)
+                  if (cons[i].get(GRB_IntAttr_IISConstr) == 1)
+                  {
+                      std::string name(cons[i].get(GRB_StringAttr_ConstrName));
+                      util::print_warning("Infeasible: " + name);
+                  }
+
+                  delete[] cons;
+              }
+
+              if(do_kbest && K>0) break;
+
+              ilp::ilp_solution_t sol(
+                  prob, ilp::SOLUTION_NOT_AVAILABLE,
+                  std::vector<double>(prob->variables().size(), 0.0));
+              out->push_back(sol);
+              break;
+          }
+          else
+          {
+              ilp::ilp_solution_t sol = convert(prob, &model, vars, prob->name());
+              bool do_break(false);
+              bool do_violate_lazy_constraint(false);
+
+              if (not lazy_cons.empty() and do_cpi)
+              {
+                  hash_set<ilp::constraint_idx_t> filtered;
+                  sol.filter_unsatisfied_constraints(&lazy_cons, &filtered);
+
+                  if (not filtered.empty())
+                  {
+                      // ADD VIOLATED CONSTRAINTS
+                      for (auto it = filtered.begin(); it != filtered.end(); ++it)
+                          add_constraint(prob, &model, *it, vars);
+                      model.update();
+                      do_violate_lazy_constraint = true;
+                  }
+                  else do_break = true;
+              }
+              else do_break = true;
+
+              if (not do_break and phillip() != NULL)
+              {
+                  if (do_time_out(begin))
+                  {
+                      sol.timeout(true);
+                      do_break = true;
+                  }
+                  else
+                  {
+                      double t_o = get_timeout();
+                      if (t_o > 0.0)
+                          GRBEXECUTE(model.getEnv().set(GRB_DoubleParam_TimeLimit, t_o););
+                  }
+              }
+
+              if (do_break)
+              {
+                  bool timeout_lhs =
+                      (prob->proof_graph() != NULL) ?
+                      prob->proof_graph()->has_timed_out() : false;
+                  ilp::solution_type_e sol_type =
+                      infer_solution_type(timeout_lhs, prob->has_timed_out(), false);
+                  if (do_violate_lazy_constraint)
+                      sol_type = ilp::SOLUTION_NOT_AVAILABLE;
+
+                  sol.set_solution_type(sol_type);
+                  out->push_back(sol);
+                  break;
+              }
+          }
+      }
+
+      if(do_kbest) {
+        if(model.get(GRB_IntAttr_SolCount) == 0) {
+          util::print_console_fmt("K-BEST: Terminated.");
+          break;
         }
-        else
-        {
-            ilp::ilp_solution_t sol = convert(prob, &model, vars, prob->name());
-            bool do_break(false);
-            bool do_violate_lazy_constraint(false);
 
-            if (not lazy_cons.empty() and do_cpi)
-            {
-                hash_set<ilp::constraint_idx_t> filtered;
-                sol.filter_unsatisfied_constraints(&lazy_cons, &filtered);
+        ilp::ilp_solution_t last_sol = (*out)[out->size()-1];
 
-                if (not filtered.empty())
-                {
-                    // ADD VIOLATED CONSTRAINTS
-                    for (auto it = filtered.begin(); it != filtered.end(); ++it)
-                        add_constraint(prob, &model, *it, vars);
-                    model.update();
-                    do_violate_lazy_constraint = true;
-                }
-                else do_break = true;
-            }
-            else do_break = true;
+        // Get indices of ILP variables to construct an ILP constraint.
+        string strLiterals = "";
+        const pg::proof_graph_t *pg = prob->proof_graph();
+        ilp::constraint_t con_suppress("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);
 
-            if (not do_break and phillip() != NULL)
-            {
-                if (do_time_out(begin))
-                {
-                    sol.timeout(true);
-                    do_break = true;
-                }
-                else
-                {
-                    double t_o = get_timeout();
-                    if (t_o > 0.0)
-                        GRBEXECUTE(model.getEnv().set(GRB_DoubleParam_TimeLimit, t_o););
-                }
-            }
+        for(int i=0; i<pg->nodes().size(); i++) {
+          if(!prob->node_is_active(last_sol, i)) continue;
+          if(-1 == pg->node(i).literal().predicate.find(phillip()->param("kbest_pred"))) continue;
 
-            if (do_break)
-            {
-                bool timeout_lhs =
-                    (prob->proof_graph() != NULL) ?
-                    prob->proof_graph()->has_timed_out() : false;
-                ilp::solution_type_e sol_type =
-                    infer_solution_type(timeout_lhs, prob->has_timed_out(), false);
-                if (do_violate_lazy_constraint)
-                    sol_type = ilp::SOLUTION_NOT_AVAILABLE;
+          strLiterals += pg->node(i).to_string() + " ";
 
-                sol.set_solution_type(sol_type);
-                out->push_back(sol);
-                break;
-            }
+          con_suppress.add_term(prob->find_variable_with_node(i), 1.0);
         }
+
+        util::print_console_fmt("K-BEST: To be suppressed: %s",strLiterals.c_str());
+        con_suppress.set_bound(con_suppress.terms().size() - 1.0);
+
+        _add_GRBconstraint(&model, con_suppress, vars);
+      } else break;
+
     }
+
 #endif
 }
 
@@ -219,7 +286,7 @@ void gurobi_t::add_variables(
     {
         const ilp::variable_t &v = prob->variable(i);
         double lb(0.0), ub(1.0);
-        
+
         if (prob->is_constant_variable(i))
             lb = ub = prob->const_variable_value(i);
 
@@ -239,28 +306,7 @@ void gurobi_t::add_constraint(
     const hash_map<ilp::variable_idx_t, GRBVar> &vars) const
 {
     const ilp::constraint_t &c = prob->constraint(idx);
-    std::string name = c.name().substr(0, 32);
-    GRBLinExpr expr;
-
-    for (auto t = c.terms().begin(); t != c.terms().end(); ++t)
-        expr += t->coefficient * vars.at(t->var_idx);
-
-    GRBEXECUTE(
-        switch (c.operator_type())
-        {
-        case ilp::OPR_EQUAL:
-            model->addConstr(expr, GRB_EQUAL, c.bound(), name);
-            break;
-        case ilp::OPR_LESS_EQ:
-            model->addConstr(expr, GRB_LESS_EQUAL, c.upper_bound(), name);
-            break;
-        case ilp::OPR_GREATER_EQ:
-            model->addConstr(expr, GRB_GREATER_EQUAL, c.lower_bound(), name);
-            break;
-        case ilp::OPR_RANGE:
-            model->addRange(expr, c.lower_bound(), c.upper_bound(), name);
-            break;
-        });
+    _add_GRBconstraint(model, c, vars);
 }
 
 

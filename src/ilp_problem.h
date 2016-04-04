@@ -47,10 +47,10 @@ public:
     inline variable_t(const std::string &name, double coef);
 
     inline void set_coefficient( double coef );
-    
+
     inline const std::string& name() const;
     inline double objective_coefficient() const;
-    
+
     inline std::string to_string() const;
 
 private:
@@ -80,10 +80,10 @@ public:
 
     inline bool is_empty() const;
     inline void add_term( variable_idx_t var_idx, double coe );
-  
+
     inline bool is_satisfied(
         const std::vector<double> &lpsol_optimized_values ) const;
-    
+
     inline const std::string& name() const;
     inline constraint_operator_e operator_type() const;
     inline const std::vector<term_t>& terms() const;
@@ -98,16 +98,16 @@ public:
     inline void set_bound(double target);
 
     inline void set_name(const std::string &name) { m_name = name; }
-    
+
     void print(
         std::string *p_out,
         const std::vector<variable_t> &var_instances) const;
 
     inline std::string to_string(const std::vector<variable_t> &vars) const;
-    
-private:    
+
+private:
     inline bool _is_satisfied(double sol) const;
-    
+
     std::string m_name;
     constraint_operator_e m_operator;
     std::vector<term_t> m_terms;
@@ -240,6 +240,7 @@ public:
     inline       constraint_t& constraint(constraint_idx_t);
 
     inline const pg::proof_graph_t* const proof_graph() const;
+    inline       solution_interpreter_t* solution_interpreter() const;
 
     /** Return the index of variable corresponding to the given node.
      *  If no variable is found, return -1. */
@@ -257,10 +258,10 @@ public:
         node_to_variable() const;
     inline const hash_map<pg::hypernode_idx_t, variable_idx_t>&
         hypernode_to_variable() const;
-    
+
     double get_value_of_objective_function(
         const std::vector<double> &values) const;
-    
+
     inline void add_attributes(
         const std::string &key, const std::string &value);
     void print(std::ostream *os) const;
@@ -304,7 +305,7 @@ protected:
     bool m_is_timeout; /// Whether conversion into ILP was timeout.
 
     const pg::proof_graph_t* const m_graph;
-    
+
     std::vector<variable_t>   m_variables;
     std::vector<constraint_t> m_constraints;
     double m_cutoff;
@@ -314,7 +315,7 @@ protected:
     /** Indices of constraints which are considered to be lazy
      *  in Cutting Plane Inference. */
     hash_set<constraint_idx_t> m_laziness_of_constraints;
-    
+
     hash_map<pg::node_idx_t, variable_idx_t> m_map_node_to_variable;
     hash_map<pg::hypernode_idx_t, variable_idx_t> m_map_hypernode_to_variable;
     hash_map<pg::edge_idx_t, variable_idx_t> m_map_edge_to_variable;
@@ -378,12 +379,12 @@ public:
 
     std::string to_string() const;
     void print(std::ostream *os = &std::cout) const;
-    void print_graph(std::ostream *os = &std::cout) const; 
-   
+    void print_graph(std::ostream *os = &std::cout) const;
+
 private:
     const ilp_problem_t* const m_ilp;
     solution_type_e m_solution_type;
-    
+
     std::vector<double> m_optimized_values;
     std::vector<bool> m_constraints_sufficiency;
     double m_value_of_objective_function;
