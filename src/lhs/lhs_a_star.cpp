@@ -31,7 +31,7 @@ pg::proof_graph_t* a_star_based_enumerator_t::execute() const
     pg::proof_graph_t *graph =
         new pg::proof_graph_t(phillip(), phillip()->get_input()->name);
     std::map<pg::chain_candidate_t, pg::hypernode_idx_t> considered;
-    
+
     auto begin = std::chrono::system_clock::now();
     add_observations(graph);
 
@@ -57,7 +57,7 @@ pg::proof_graph_t* a_star_based_enumerator_t::execute() const
             pg::hypernode_idx_t hn_new = cand.is_forward ?
                 graph->forward_chain(cand.nodes, axiom) :
                 graph->backward_chain(cand.nodes, axiom);
-            
+
             if (hn_new >= 0)
             {
                 const std::vector<pg::node_idx_t> nodes_new = graph->hypernode(hn_new);
@@ -126,6 +126,15 @@ const pg::proof_graph_t *graph, reachability_manager_t *out) const
     for (auto n1 = obs.begin(); n1 != obs.end(); ++n1)
     for (auto n2 = obs.begin(); n2 != n1; ++n2)
     {
+
+      if(phillip()->flag("abductive_theorem_prover")) {
+        if(!((graph->node(*n1).type() == pg::NODE_OBSERVABLE &&
+          graph->node(*n1).literal().predicate == phillip()->param("atp_query")) ||
+          (graph->node(*n2).type() == pg::NODE_OBSERVABLE &&
+          graph->node(*n2).literal().predicate == phillip()->param("atp_query"))))
+            continue;
+      }
+
         float dist = kb->get_distance(
             graph->node(*n1).literal().get_arity(),
             graph->node(*n2).literal().get_arity());
@@ -143,7 +152,7 @@ void a_star_based_enumerator_t::add_reachability(
     const pg::proof_graph_t *graph,
     pg::node_idx_t start, pg::node_idx_t current, float dist,
     const hash_set<pg::node_idx_t> &goals, reachability_manager_t *out) const
-{    
+{
     if (not check_permissibility_of(dist)) return;
 
     hash_set<pg::node_idx_t> goals_filtered;
@@ -162,9 +171,9 @@ void a_star_based_enumerator_t::add_reachability(
         {
             lf::axiom_t axiom = kb::kb()->get_axiom(ax.first);
             float d_from = dist + kb::kb()->get_distance(axiom);
-            
+
             if (not check_permissibility_of(d_from)) continue;
-            
+
             for (auto g : goals_filtered)
             {
                 std::string arity_goal = graph->node(g).arity();

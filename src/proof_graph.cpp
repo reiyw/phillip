@@ -293,7 +293,7 @@ void proof_graph_t::chain_candidate_generator_t::enumerate()
         [&, this](const std::vector<pg::node_idx_t> *nodes, index_t i) -> bool
     {
         auto it = hard_terms.find(i);
-        
+
         if (it != hard_terms.end())
         for (auto p : it->second)
         {
@@ -302,7 +302,7 @@ void proof_graph_t::chain_candidate_generator_t::enumerate()
 
             return l1.terms.at(p.second.first) != l2.terms.at(p.second.second);
         }
-        
+
         return false;
     };
 
@@ -312,7 +312,7 @@ void proof_graph_t::chain_candidate_generator_t::enumerate()
         if (i == i_pivot)
         {
             (*nodes)[i] = m_pivot;
-            
+
             if (not do_violate_hard_term(nodes, i))
             {
                 if (i < kb::arities(*m_pt_iter).size() - 1)
@@ -325,7 +325,7 @@ void proof_graph_t::chain_candidate_generator_t::enumerate()
         {
             const hash_set<node_idx_t> &ns =
                 a2ns.at(kb::arities(*m_pt_iter).at(i));
-            
+
             for (auto n : ns)
             {
                 (*nodes)[i] = n;
@@ -340,7 +340,7 @@ void proof_graph_t::chain_candidate_generator_t::enumerate()
             }
         }
     };
-    
+
     std::vector<node_idx_t> nodes(kb::arities(*m_pt_iter).size(), -1);
 
     for (auto i_pivot : slots_pivot)
@@ -367,12 +367,12 @@ void proof_graph_t::unifiable_variable_clusters_set_t::add(
 {
     m_variables.insert(t1);
     m_variables.insert(t2);
-    
+
     hash_map<term_t, index_t>::iterator iter_c1 = m_map_v2c.find(t1);
     hash_map<term_t, index_t>::iterator iter_c2 = m_map_v2c.find(t2);
     bool has_found_t1(iter_c1 != m_map_v2c.end());
     bool has_found_t2(iter_c2 != m_map_v2c.end());
-    
+
     if (not has_found_t1  and not has_found_t2)
     {
         m_idx_new_cluster++;
@@ -545,7 +545,7 @@ bool proof_graph_t::_check_nodes_coexistability(
         const bool *log = m_temporal.coexistability_logs.find(n1, n2);
         if (log != NULL) return (*log);
     }
-    
+
     hash_set<edge_idx_t>
         e1(enumerate_dependent_edges(n1)),
         e2(enumerate_dependent_edges(n2));
@@ -656,7 +656,7 @@ std::string proof_graph_t::edge_to_string( edge_idx_t i ) const
         str_edge << " => UNIFY => "; break;
     default:
         str_edge << util::format(" => USER-DEFINED(type=%d) => ", _edge.type());
-        break;               
+        break;
     }
 
     if (_edge.head() >= 0)
@@ -670,7 +670,7 @@ std::string proof_graph_t::edge_to_string( edge_idx_t i ) const
     }
     else
         str_edge << "none";
-    
+
     return str_edge.str();
 }
 
@@ -706,7 +706,7 @@ hash_set<node_idx_t>
     hash_set<node_idx_t> out;
     const hash_set<node_idx_t> *pa_list =
         search_nodes_with_predicate( lit.predicate, lit.terms.size() );
-    
+
     if (pa_list == NULL) return out;
 
     for (auto it = pa_list->begin(); it != pa_list->end(); ++it)
@@ -947,7 +947,7 @@ void proof_graph_t::print(std::ostream *os) const
 
     for (auto it = m_attributes.begin(); it != m_attributes.end(); ++it)
         (*os) << "\" " << it->first << "=\"" << it->second;
-    
+
     (*os) << "\">" << std::endl;
 
     print_nodes(os);
@@ -1015,7 +1015,7 @@ void proof_graph_t::print_edges(std::ostream *os) const
     {
         const edge_t e = edge(i);
         std::string type;
-        
+
         if (e.type() < EDGE_USER_DEFINED)
         {
             switch (e.type())
@@ -1134,11 +1134,11 @@ node_idx_t proof_graph_t::add_node(
     node_t add(this, lit, type, m_nodes.size(), depth, parents);
     int n = static_cast<int>(lit.terms.size());
     node_idx_t out = m_nodes.size();
-    
+
     m_nodes.push_back(add);
     m_maps.predicate_to_nodes[lit.predicate][n].insert(out);
     m_maps.depth_to_nodes[depth].insert(out);
-    
+
     if(lit.is_equality())
     {
         term_t t1(lit.terms[0]), t2(lit.terms[1]);
@@ -1161,7 +1161,7 @@ node_idx_t proof_graph_t::add_node(
         if (add.arity_id() != kb::INVALID_ARITY_ID)
             m_maps.arity_to_nodes[add.arity_id()].insert(out);
     }
-    
+
     for (unsigned i = 0; i < lit.terms.size(); i++)
     {
         const term_t& t = lit.terms.at(i);
@@ -1182,7 +1182,7 @@ edge_idx_t proof_graph_t::add_edge(const edge_t &edge)
     if (edge.head() >= 0)
     for (auto n_idx : hypernode(edge.head()))
         m_maps.head_node_to_edges[n_idx].insert(idx);
-    
+
     for (auto n_idx : hypernode(edge.tail()))
         m_maps.tail_node_to_edges[n_idx].insert(idx);
 
@@ -1397,7 +1397,7 @@ hypernode_idx_t proof_graph_t::chain(
             {
                 node_idx_t n1(*it_n1), n2(*it_n2);
                 const unifier_t *uni = m_mutual_exclusive_nodes.find(n1, n2);
-                
+
                 if (uni != NULL)
                 {
                     if (not uni->empty())
@@ -1612,7 +1612,7 @@ hypernode_idx_t proof_graph_t::chain(
         _generate_mutual_exclusions(hn_to[i], muexs[i]);
         _generate_unification_assumptions(hn_to[i]);
     }
-    
+
     return idx_hn_to;
 }
 
@@ -1814,6 +1814,12 @@ void proof_graph_t::_generate_unification_assumptions(node_idx_t target)
             if (_is_considered_unification(n1, n2)) continue;
             else m_temporal.considered_unifications.insert(n1, n2); // ADD TO LOG
 
+            if (phillip()->flag("abductive_theorem_prover")) {
+                if (node(n1).type() == NODE_HYPOTHESIS &&
+                    node(n2).type() == NODE_HYPOTHESIS)
+                    continue;
+            }
+
             // IF ONE IS THE ANCESTOR OF ANOTHER, THE PAIR CANNOT UNIFY.
             if (node(n1).ancestors().count(n2) > 0 or
                 node(n2).ancestors().count(n1) > 0)
@@ -1888,7 +1894,7 @@ void proof_graph_t::_chain_for_unification(node_idx_t i, node_idx_t j)
     std::vector<node_idx_t> unified_nodes; // FROM
     std::vector<node_idx_t> unify_nodes; // TO
     unifier_t uni;
-    
+
     if (i >= j) std::swap(i, j);
     unified_nodes.push_back(i);
     unified_nodes.push_back(j);
@@ -2097,7 +2103,7 @@ hypernode_idx_t proof_graph_t::add_hypernode(
             std::list<node_idx_t>(indices.begin(), indices.end()));
         m_maps.unordered_nodes_to_hypernode[h].insert(idx);
     }
-    
+
     return idx;
 }
 

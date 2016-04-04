@@ -44,6 +44,14 @@ pg::proof_graph_t* depth_based_enumerator_t::execute() const
 
         for (auto n : (*nodes))
         {
+
+          if(phillip()->flag("abductive_theorem_prover")) {
+            if(graph->node(n).type() == pg::NODE_OBSERVABLE) {
+              if(graph->node(n).literal().predicate != phillip()->param("atp_query"))
+                  continue;
+            }
+          }
+
             for (gen.init(n); not gen.end(); gen.next())
             {
                 for (auto ax : gen.axioms())
