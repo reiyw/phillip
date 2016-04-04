@@ -243,16 +243,33 @@ void gurobi_t::solve(
 
         ilp::ilp_solution_t last_sol = (*out)[out->size()-1];
 
+        util::print_console_fmt("K-BEST: Got a solution (obj. = %f)", model.get(GRB_DoubleAttr_ObjVal));
+
         // Get indices of ILP variables to construct an ILP constraint.
-        string strLiterals = "";
         const pg::proof_graph_t *pg = prob->proof_graph();
         ilp::constraint_t con_suppress("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);
+        string strLiterals = "";
 
+        // Find prohibited nodes.
         for(int i=0; i<pg->nodes().size(); i++) {
           if(!prob->node_is_active(last_sol, i)) continue;
           if(-1 == pg->node(i).literal().predicate.find(phillip()->param("kbest_pred"))) continue;
 
           strLiterals += pg->node(i).to_string() + " ";
+
+          // Furthermore, find active equalities related to the arguments in active nodes.
+          for(int j=0; j<pg->node(i).literal().terms.size(); j++) {
+            if(pg->node(i).literal().terms[j].is_constant()) continue;
+
+            const hash_set<pg::node_idx_t> *pNodes = pg->search_nodes_with_term(pg->node(i).literal().terms[j]);
+
+            for(auto eq = pNodes->begin(); eq != pNodes->end(); ++eq) {
+              if(prob->node_is_active(last_sol, *eq) && (pg->node(*eq).is_equality_node() || pg->node(*eq).is_transitive_equality_node())) {
+                strLiterals += pg->node(*eq).to_string() + " ";
+                con_suppress.add_term(prob->find_variable_with_node(*eq), 1.0);
+              }
+            }
+          }
 
           con_suppress.add_term(prob->find_variable_with_node(i), 1.0);
         }
