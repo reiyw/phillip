@@ -12,36 +12,44 @@ import util
 
 
 class ProofGraph(util.ProofGraph):
-    
-    def __init__(self, pg):
+
+    def __init__(self, pg, output_unifiedobs_only = False):
         util.ProofGraph.__init__(self, pg)
         self.node2id = dict()
         self.relay_id_offset = math.pow(10, math.ceil(math.log10(max(self.nodes.keys()) + 1)))
-    
+
+        self.filter_output_node = {}
+
         self.str_nodes = []
         self.str_edges = []
 
         for i in sorted(self.chains.iterkeys()):
             chain = self.chains[i]
             for j in (chain.tail + chain.head):
+                if chain.active:
+                    self.filter_output_node[j] = 1
+
                 if not j in self.node2id:
                     self.node2id[j] = len(self.node2id)
 
         for u in self.unifs:
             for i in u.unified:
+                if u.active:
+                    self.filter_output_node[i] = 1
+
                 if not i in self.node2id:
                     self.node2id[i] = len(self.node2id)
-        
+
         for i in self.nodes.iterkeys():
             if not i in self.node2id:
                 self.node2id[i] = len(self.node2id)
-        
+
         for chain in self.chains.itervalues():
             c, r = self.__chain2str(chain)
             self.str_edges += c
             if r: self.str_nodes.append(r);
 
-        self.str_nodes += [self.__node2str(n) for i, n in self.nodes.iteritems()]
+        self.str_nodes += [self.__node2str(n) for i, n in self.nodes.iteritems() if not output_unifiedobs_only or self.filter_output_node.has_key(n.id)]
         self.str_edges += [self.__unify2str(u) for u in self.unifs]
 
 
@@ -56,7 +64,7 @@ class ProofGraph(util.ProofGraph):
       font-family: monospace;
     }
   </style>
-  
+
 <h1>%s</h1>
 <ul>
   <li>state = <b>%s</b></li>
@@ -116,7 +124,7 @@ class ProofGraph(util.ProofGraph):
         direction: \"LR\",
       };
     }
-    
+
     var container = document.getElementById('visualization@SUF');
     var network = new vis.Network(container, data, options);
   }
@@ -133,7 +141,7 @@ self.timeout['sol'], self.timeout['all'],
 ",\n    ".join(self.str_edges))).replace('@SUF', suffix)
 
     def __node2str(self, n):
-        splitted = n.literal[1:-1].split()        
+        splitted = n.literal[1:-1].split()
         params = {
             'id' : self.node2id[n.id],
             'label' : "\'%s(%s)\'" % (splitted[0], ', '.join(splitted[1:])),
@@ -150,7 +158,7 @@ self.timeout['sol'], self.timeout['all'],
             'isActive': 'true' if n.active else 'false',
             'depth' : (n.depth * 2),
             }
-            
+
         return self.__join_parameters(params)
 
 
@@ -201,7 +209,7 @@ self.timeout['sol'], self.timeout['all'],
                 }
             params_relay.update(params_common)
             relay = self.__join_parameters(params_relay)
-            
+
             for i in c.tail:
                 params_from = {
                     'from' : self.node2id[i],
@@ -223,7 +231,7 @@ self.timeout['sol'], self.timeout['all'],
                 params_to.update(params_common)
                 params_to.update(params_edge)
                 chains.append(self.__join_parameters(params_to))
-        
+
         return chains, relay
 
     def __unify2str(self, u):
@@ -267,7 +275,7 @@ self.timeout['sol'], self.timeout['all'],
 
         return "#%02x%02x%02x" % (r, g, b)
 
-        
+
 
 def convert_to_html(conf, graphs, visjs):
     return """
@@ -301,38 +309,41 @@ def main():
         '--split', '-s',
         help='Generate HTMLs for each proof-graph, where SPLIT is prefix of file path')
     parser.add_argument(
+        '--show-only-unified-obs', '-u', action="store_true",
+        help='Output only observable literals unified with something.')
+    parser.add_argument(
         '--visjs', nargs=1, default='./visjs/dist/vis.min.js',
         help='Set the path of visjs. (default: \"./visjs/dist/vis.min.js\")')
-    
+
     args = parser.parse_args()
-    
+
     if args.input:
         root = et.parse(args.input).getroot()
     else:
         root = et.fromstring(sys.stdin.read())
 
     conf = util.Configure(root)
-    graphs = [ProofGraph(pg) for pg in root.getiterator('proofgraph')]
+    graphs = [ProofGraph(pg, output_unifiedobs_only=args.show_only_unified_obs) for pg in root.getiterator('proofgraph')]
 
     if args.split:
         prefix = args.split
-        
+
         if prefix.endswith('html'):
             prefix = args[:-4]
         if prefix.endswith('htm'):
             prefix = args[:-3]
-            
+
         if prefix:
             if not prefix[-1] in ['.', '/']:
                 prefix += '.'
-                
+
         for i, pg in enumerate(graphs):
             with open('%s%d.html' % (prefix, i), 'w') as fo:
                 fo.write(convert_to_html(conf, [pg,], args.visjs[0]))
-                
-    else:        
+
+    else:
         print convert_to_html(conf, graphs, args.visjs[0])
 
-    
+
 if(__name__=='__main__'):
     main()

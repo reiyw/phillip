@@ -268,6 +268,7 @@ void gurobi_t::solve(
 
             const hash_set<pg::node_idx_t> *pNodes = pg->search_nodes_with_term(pg->node(i).literal().terms[j]);
 
+            // pNodes: related (possibly non-equality) literals.
             for(auto eq = pNodes->begin(); eq != pNodes->end(); ++eq) {
               if(prob->node_is_active(last_sol, *eq) && (pg->node(*eq).is_equality_node() || pg->node(*eq).is_transitive_equality_node())) {
 
