@@ -138,7 +138,11 @@ void gurobi_t::solve(
     int len = 1;
     bool do_kbest(false),
       do_kbest_litwise(false),
-      do_kbest_unified_with_constant(false);
+      do_kbest_unified_with_constant(false),
+      do_kbest_disable_tiecare(false)
+      ;
+    hash_set<int>
+      kbest_ignore_args;
 
     if(phillip() != NULL) {
       do_kbest = phillip()->flag("kbest");
@@ -146,11 +150,16 @@ void gurobi_t::solve(
       if(do_kbest) {
         len = phillip()->param_int("kbest_k", 2);
         do_kbest_litwise = phillip()->flag("kbest_litwise");
+        do_kbest_disable_tiecare = phillip()->flag("kbest_disable_tiecare");
         do_kbest_unified_with_constant = phillip()->flag("kbest_prohibit_unification_with_constant_only");
+        kbest_ignore_args.insert(phillip()->param_int("kbest_pred_ignore_arg", -1));
       }
     }
 
-    for(int K=0; K<len; K++) {
+    double last_objval          = 0.0;
+    int    K                    = 0;
+
+    while(K < len) {
 
       size_t num_loop(0);
       while (true)
@@ -241,17 +250,39 @@ void gurobi_t::solve(
       }
 
       if(do_kbest) {
+        const pg::proof_graph_t *pg = prob->proof_graph();
+
         if(model.get(GRB_IntAttr_SolCount) == 0) {
           util::print_console_fmt("K-BEST: Terminated.");
           break;
         }
 
-        ilp::ilp_solution_t last_sol = (*out)[out->size()-1];
+        if(model.get(GRB_DoubleAttr_ObjVal) != last_objval) {
+          K++;
 
-        util::print_console_fmt("K-BEST: Got a solution (obj. = %f)", model.get(GRB_DoubleAttr_ObjVal));
+        } else if(out->size() > 2) {
+          ilp::ilp_solution_t& previous_sol = (*out)[out->size()-2], last_sol = (*out)[out->size()-1];
+          bool fSame = true;
+
+          for(int i=0; i<pg->nodes().size(); i++) {
+            if(prob->node_is_active(previous_sol, i) != prob->node_is_active(last_sol, i)) {
+              fSame = false;
+              break;
+            }
+          }
+
+          if(fSame) {
+            util::print_console_fmt("K-BEST: Got the exactly same solution. Terminated. ");
+            break;
+          }
+        }
+
+        ilp::ilp_solution_t &last_sol = (*out)[out->size()-1];
+        last_objval = model.get(GRB_DoubleAttr_ObjVal);
+
+        util::print_console_fmt("K-BEST: Got a %d-best solution (obj. = %f)", K, last_objval);
 
         // Get indices of ILP variables to construct an ILP constraint.
-        const pg::proof_graph_t *pg = prob->proof_graph();
         ilp::constraint_t con_suppress("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);
         string strLiterals = "";
 
@@ -264,6 +295,7 @@ void gurobi_t::solve(
 
           // Furthermore, find active equalities related to the arguments in active nodes.
           for(int j=0; j<pg->node(i).literal().terms.size(); j++) {
+            if(kbest_ignore_args.end() != kbest_ignore_args.find(1+j)) continue;
             if(pg->node(i).literal().terms[j].is_constant()) continue;
 
             const hash_set<pg::node_idx_t> *pNodes = pg->search_nodes_with_term(pg->node(i).literal().terms[j]);
