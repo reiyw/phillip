@@ -280,7 +280,7 @@ void gurobi_t::solve(
         ilp::ilp_solution_t &last_sol = (*out)[out->size()-1];
         last_objval = model.get(GRB_DoubleAttr_ObjVal);
 
-        util::print_console_fmt("K-BEST: Got a %d-best solution (obj. = %f)", K, last_objval);
+        util::print_console_fmt("K-BEST: Got a %d-th best solution (obj. = %f)", K, last_objval);
 
         // Get indices of ILP variables to construct an ILP constraint.
         ilp::constraint_t con_suppress("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);

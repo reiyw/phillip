@@ -69,6 +69,40 @@ pg::proof_graph_t* depth_based_enumerator_t::execute() const
         {
             const lf::axiom_t &axiom = kb::kb()->get_axiom(p.first);
 
+            // Make inference efficient exploiting non-abducible literals.
+            std::vector<const lf::logical_function_t*> nonab_lfs;
+
+            if(axiom.func.branch(0).is_operator(lf::OPR_LITERAL)) {
+              if(axiom.func.branch(0).find_parameter("non-ab"))
+                nonab_lfs.push_back(&axiom.func.branch(0));
+
+            } else {
+              for(int i=0; i<axiom.func.branch(0).branches().size(); i++) {
+                if(axiom.func.branch(0).branch(i).find_parameter("non-ab"))
+                  nonab_lfs.push_back(&axiom.func.branch(0).branch(i));
+              }
+
+            }
+
+            int num_nonabs = 0, num_provable_nonabs = 0;
+
+            for(int i=0; i<nonab_lfs.size(); i++) {
+              num_nonabs++;
+
+              // Cancel this inference if there is no literal like this in observation.
+              for(auto n_obs : graph->observation_indices()) {
+                if(graph->node(n_obs).literal().predicate == nonab_lfs[i]->literal().predicate) {
+                  num_provable_nonabs++;
+                  break;
+                }
+              }
+            }
+
+            if(num_provable_nonabs < num_nonabs) {
+              IF_VERBOSE_3("Inference was canceled due to non-abducible literal.");
+              continue;
+            }
+
             for (auto c : p.second)
             {
                 pg::hypernode_idx_t to = c.is_forward ?

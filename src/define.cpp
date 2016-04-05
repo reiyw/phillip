@@ -571,7 +571,7 @@ void mkdir(std::string path)
 #else
     const std::string det = "/";
 #endif
-    
+
     auto splitted = split(path, det.c_str());
     path = (path[0] == det[0]) ? det : "";
 
@@ -585,7 +585,7 @@ void mkdir(std::string path)
             path += '/';
 #endif
         }
-            
+
         path += (*it);
 
         if (not path.empty())
@@ -644,7 +644,7 @@ std::string indexize_path(std::string str, int idx)
     for (int i = str.size() - 1; i >= 0; --i)
     {
         if (str.at(i) == '.')
-            return str.substr(0, i) + rep + str.substr(i);            
+            return str.substr(0, i) + rep + str.substr(i);
         if (str.at(i) == '/' or str.at(i) == '\\')
             return str + rep;
     }
