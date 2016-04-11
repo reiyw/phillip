@@ -30,7 +30,7 @@ void constraint_t::print(
         _sprintf( buffer, "%.2f * %s", it->coefficient, name.c_str() );
         (*p_out) += buffer;
     }
-            
+
     switch( m_operator )
     {
     case OPR_EQUAL:
@@ -210,7 +210,7 @@ variable_idx_t ilp_problem_t::add_variable_of_edge(
                 util::format("e_hn_dependency:e(%d):hn(%d,%d)",
                        idx, edge.tail(), edge.head()),
                 OPR_GREATER_EQ, 0.0);
-            
+
             con.add_term(v_tail, 1.0);
             if (edge.head() >= 0)
                 con.add_term(v_head, 1.0);
@@ -236,7 +236,7 @@ variable_idx_t ilp_problem_t::add_variable_of_edge(
 
 constraint_idx_t ilp_problem_t::
 add_constraint_of_dependence_of_node_on_hypernode(pg::node_idx_t idx)
-{   
+{
     const pg::node_t &node = m_graph->node(idx);
     if (node.is_equality_node() or node.is_non_equality_node()) return -1;
 
@@ -516,7 +516,7 @@ bool ilp_problem_t::add_constraints_of_transitive_unification(
     constraint_idx_t idx_trans1 = add_constraint(con_trans1);
     constraint_idx_t idx_trans2 = add_constraint(con_trans2);
     constraint_idx_t idx_trans3 = add_constraint(con_trans3);
-    
+
     // FOR CUTTING-PLANE
     add_laziness_of_constraint(idx_trans1);
     add_laziness_of_constraint(idx_trans2);
@@ -573,7 +573,7 @@ void ilp_problem_t::enumerate_variables_for_requirement(
         for (auto n_idx : (*nodes))
         {
             pg::edge_idx_t e = m_graph->find_unifying_edge(req.index, n_idx);
-            
+
             if (e >= 0)
             {
                 variable_idx_t v = find_variable_with_edge(e);
@@ -795,7 +795,7 @@ void ilp_problem_t::print(std::ostream *os) const
     (*os)
         << "\">" << std::endl
         << "<variables num=\"" << m_variables.size() << "\">" << std::endl;
-    
+
     for (int i = 0; i < m_variables.size(); i++)
     {
         const variable_t &var = m_variables.at(i);
@@ -806,7 +806,7 @@ void ilp_problem_t::print(std::ostream *os) const
             (*os) << " fixed=\"" << const_variable_values().at(i) << "\"";
         (*os) << "></variable>" << std::endl;
     }
-    
+
     (*os)
         << "</variables>" << std::endl
         << "<constraints num=\"" << m_constraints.size()
@@ -821,7 +821,7 @@ void ilp_problem_t::print(std::ostream *os) const
               << "\" name=\"" << cons.name()
               << "\">" << cons_exp << "</constraint>" << std::endl;
     }
-    
+
     (*os) << "</constraints>" << std::endl
           << "</ilp>" << std::endl;
 }
@@ -873,7 +873,7 @@ void ilp_problem_t::print_solution(
     _print_literals_in_solution(sol, os);
     _print_explanations_in_solution(sol, os);
     _print_unifications_in_solution(sol, os);
-    
+
     (*os) << "</proofgraph>" << std::endl;
 
     if (os == &std::cout)
@@ -1123,7 +1123,7 @@ void ilp_solution_t::merge(const ilp_solution_t &sol)
     m_solution_type =
         ((int)m_solution_type > (int)sol.m_solution_type) ?
         m_solution_type : sol.m_solution_type;
-    
+
     m_optimized_values.insert(
         m_optimized_values.end(),
         sol.m_optimized_values.begin(),

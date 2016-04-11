@@ -155,7 +155,7 @@ inline void string_hash_t::set_flags(const std::string &str)
             (str.at(0) == '_' and str.at(1) == 'u');
 #ifdef DISABLE_HARD_TERM
         m_is_hard_term = false;
-#else        
+#else
         m_is_hard_term = str.empty() ? false : (str.front() == '*');
 #endif
     }
@@ -171,7 +171,7 @@ inline void string_hash_t::set_flags(const std::string &str)
 inline std::string literal_t::get_arity(
     const predicate_t &pred, int term_num, bool is_negated)
 {
-    return 
+    return
         (is_negated ? "!" : "") +
         util::format("%s/%d", pred.c_str(), term_num);
 }
@@ -179,7 +179,7 @@ inline std::string literal_t::get_arity(
 
 inline literal_t::literal_t( const std::string &_pred, bool _truth )
     : predicate(_pred), truth(_truth) {}
-    
+
 
 inline literal_t::literal_t(
     predicate_t _pred, const std::vector<term_t> _terms, bool _truth )
@@ -243,6 +243,41 @@ inline std::string literal_t::to_string( bool f_colored ) const
 inline std::string literal_t::get_arity() const
 {
     return get_arity(predicate, terms.size(), not truth);
+}
+
+
+inline std::string literal_t::get_arity_with_all_constants() const
+{
+    std::string ret;
+
+    for(int i=0; i<terms.size(); i++) {
+      if(terms[i].is_constant())
+        ret += util::format("/%d:%s", i, std::string(terms[i]).c_str());
+    }
+
+    return util::format("%s%s/%d", predicate.c_str(), ret.c_str(), terms.size());
+}
+
+
+inline std::vector<std::string> literal_t::get_arity_with_constants() const
+{
+    std::vector<std::string> ret, constants;
+
+    for(int i=0; i<terms.size(); i++) {
+      if(terms[i].is_constant()) constants.push_back(util::format("+%d:%s", i, std::string(terms[i]).c_str()));
+    }
+
+    for(int i=0; i<(1<<constants.size()); i++) {
+      std::string args;
+
+      for(int j=0; j<constants.size(); j++) {
+        if((i & (1<<j)) == (1<<j)) args += constants[j];
+      }
+
+      ret.push_back(util::format("%s/%d%s", predicate.c_str(), terms.size(), args.c_str()));
+    }
+
+    return ret;
 }
 
 
@@ -420,7 +455,7 @@ inline size_t get_file_size(const std::string &filename)
     return filestatus.st_size;
 }
 
-  
+
 inline size_t get_file_size(std::istream &ifs)
 {
     size_t file_size =
@@ -602,4 +637,3 @@ template <class Container> void erase(Container &c, size_t i)
 } // end of util
 
 } // end of phil
-

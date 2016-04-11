@@ -88,7 +88,7 @@ bool unification_postponement_t::do_postpone(
             static_cast<unification_postpone_argument_type_e>(m_args.at(i));
 
         if (arg == UNI_PP_DISPENSABLE) continue;
-        
+
         bool can_equal(l1.terms.at(i) == l2.terms.at(i));
         if (not can_equal)
             can_equal = (graph->find_sub_node(l1.terms.at(i), l2.terms.at(i)) >= 0);
@@ -131,7 +131,7 @@ void knowledge_base_t::setup(
 {
     if (ms_instance != NULL)
         ms_instance.reset(NULL);
-        
+
     ms_filename = filename;
     ms_max_distance = max_distance;
     ms_thread_num_for_rm = thread_num_for_rm;
@@ -143,7 +143,7 @@ void knowledge_base_t::setup(
 
 knowledge_base_t::knowledge_base_t(const std::string &filename)
     : m_state(STATE_NULL),
-      m_filename(filename), m_version(KB_VERSION_1), 
+      m_filename(filename), m_version(KB_VERSION_1),
       m_cdb_rhs(filename + ".rhs.cdb"),
       m_cdb_lhs(filename + ".lhs.cdb"),
       m_cdb_axiom_group(filename + ".group.cdb"),
@@ -760,14 +760,14 @@ void knowledge_base_t::insert_axiom_group_to_cdb()
         }
 
         assert(byte_size == size);
-        
+
         dat.put(it->first.c_str(), it->first.length(), buffer, size);
         delete [] buffer;
     }
 
     const int SIZE(512 * 512);
     char buffer[SIZE];
-    
+
     for (auto it = axiom_to_group.begin(); it != axiom_to_group.end(); ++it)
     {
         int size = util::to_binary<size_t>(it->second.size(), buffer);
@@ -839,7 +839,7 @@ void knowledge_base_t::set_stop_words()
                 names_of_axiom_excludes_expected_stop_word[a][i].push_back(ax.name);
             excluded.insert(std::make_pair(a, i));
         };
-        
+
         for (auto l : evd)
         if (not l->is_equality())
         {
@@ -915,7 +915,7 @@ void knowledge_base_t::set_stop_words()
         for (auto it2 = it1->second.begin(); it2 != it1->second.end();)
         {
             term_pos_t p(it1->first, *it2);
-        
+
             if (excluded.count(p) > 0)
             {
                 if (m_asserted_stop_words.count(it1->first) > 0 and
@@ -928,7 +928,7 @@ void knowledge_base_t::set_stop_words()
                         "Stop-word assertion failed: "
                         "\"%s\" cannot be a stop-word because of \"%s\".",
                         it1->first.c_str(), ax_name.c_str()));
-                
+
                     throw phillip_exception_t(disp);
                 }
                 it2 = it1->second.erase(it2);
@@ -998,7 +998,7 @@ void knowledge_base_t::set_stop_words()
     {
         std::list<std::string> stop_words(m_stop_words.begin(), m_stop_words.end());
         stop_words.sort();
-        
+
         util::print_console(
             "stop-words = {" +
             util::join(stop_words.begin(), stop_words.end(), ", ") + "}");
@@ -1175,14 +1175,14 @@ void knowledge_base_t::create_reachable_matrix()
     hash_map<arity_id_t, hash_map<arity_id_t, float> > base_lhs, base_rhs;
     hash_set<arity_id_t> ignored;
     std::set<std::pair<arity_id_t, arity_id_t> > base_para;
-    
+
     for (auto it = m_stop_words.begin(); it != m_stop_words.end(); ++it)
     {
         const arity_id_t idx = search_arity_id(*it);
         if (idx != INVALID_ARITY_ID) ignored.insert(idx);
     }
     ignored.insert(INVALID_ARITY_ID);
-    
+
     _create_reachable_matrix_direct(ignored, &base_lhs, &base_rhs, &base_para);
 
     IF_VERBOSE_2("  writing reachable matrix...");
@@ -1190,7 +1190,7 @@ void knowledge_base_t::create_reachable_matrix()
     int num_thread =
         std::min<int>(arities.size(),
         std::min<int>(ms_thread_num_for_rm, std::thread::hardware_concurrency()));
-    
+
     for (int th_id = 0; th_id < num_thread; ++th_id)
     {
         worker.emplace_back(
@@ -1199,14 +1199,14 @@ void knowledge_base_t::create_reachable_matrix()
                 for(arity_id_t idx = th_id; idx < arities.size(); idx += num_thread)
                 {
                     if (ignored.count(idx) != 0) continue;
-                    
+
                     hash_map<arity_id_t, float> dist;
                     _create_reachable_matrix_indirect(
                         idx, base_lhs, base_rhs, base_para, &dist);
                     m_rm.put(idx, dist);
 
                     ms_mutex_for_rm.lock();
-                    
+
                     num_inserted += dist.size();
                     ++processed;
 
@@ -1219,19 +1219,19 @@ void knowledge_base_t::create_reachable_matrix()
                         std::cerr.flush();
                         clock_past = c;
                     }
-                    
+
                     ms_mutex_for_rm.unlock();
                 }
             }, th_id);
     }
     for (auto &t : worker) t.join();
-    
+
     time(&time_end);
-    int proc_time(time_end - time_start); 
+    int proc_time(time_end - time_start);
     double coverage(
         num_inserted * 100.0 /
         (double)(arities.size() * arities.size()));
-    
+
     IF_VERBOSE_1("completed computation.");
     IF_VERBOSE_3(util::format("  process-time = %d", proc_time));
     IF_VERBOSE_3(util::format("  coverage = %.6lf%%", coverage));
@@ -1252,7 +1252,7 @@ void knowledge_base_t::_create_reachable_matrix_direct(
     {
         hash_map<arity_id_t, float> buf;
         m_category_table.instance->gets(i, &buf);
-        
+
         for (auto p : buf)
         if (p.second >= 0.0f)
         {
@@ -1346,7 +1346,7 @@ void knowledge_base_t::_create_reachable_matrix_direct(
             float progress = (float)(num_processed)* 100.0f / (float)m_axioms.num_axioms();
             std::cerr << util::format("processed %d axioms [%.4f%%]\r", num_processed, progress);
         }
-    }    
+    }
 }
 
 
@@ -1466,7 +1466,7 @@ std::list<axiom_id_t> knowledge_base_t::search_id_list(
     const std::string &query, const util::cdb_data_t *dat) const
 {
     std::list<axiom_id_t> out;
-    
+
     if (dat != NULL)
     {
         if (not dat->is_readable())
@@ -1491,7 +1491,7 @@ std::list<axiom_id_t> knowledge_base_t::search_id_list(
             }
         }
     }
-    
+
     return out;
 }
 
@@ -1818,8 +1818,8 @@ void knowledge_base_t::arity_database_t::add_mutual_exclusion(const literal_t &l
 
     if (not pairs.empty())
     {
-        arity_id_t a1 = add(l1.get_arity());
-        arity_id_t a2 = add(l2.get_arity());
+        arity_id_t a1 = add(l1.get_arity_with_all_constants());
+        arity_id_t a2 = add(l2.get_arity_with_all_constants());
         if (a1 > a2) std::swap(a1, a2);
 
         m_mutual_exclusions[a1][a2] = pairs;
@@ -1851,7 +1851,7 @@ void knowledge_base_t::reachable_matrix_t::prepare_compile()
     {
         std::lock_guard<std::mutex> lock(ms_mutex);
         pos_t pos;
-        
+
         m_fout = new std::ofstream(
             m_filename.c_str(), std::ios::binary | std::ios::out);
         m_fout->write((const char*)&pos, sizeof(pos_t));
@@ -2206,7 +2206,7 @@ void basic_category_table_t::finalize()
 void basic_category_table_t::combinate()
 {
     const float max_dist = knowledge_base_t::get_max_distance();
-    
+
     auto search = [this](arity_id_t a1, arity_id_t a2) -> float
     {
         auto found1 = m_table.find(a1);
@@ -2218,13 +2218,13 @@ void basic_category_table_t::combinate()
         }
         return -1.0f;
     };
-    
+
     std::function<void(arity_id_t, arity_id_t, float, int)> walk =
         [&, this](arity_id_t a1, arity_id_t a2, float dist, int depth)
     {
         if (m_max_depth >= 0 and depth >= m_max_depth)
             return;
-        
+
         for (auto p : m_table.at(a2))
         {
             if (p.first != a1)
@@ -2257,7 +2257,7 @@ void basic_category_table_t::combinate()
         if (n % 10 == 0 and phillip_main_t::verbose() >= VERBOSE_1)
             std::cerr << "Processed " << n << " elements [" << rate << "%]\r";
     }
-    
+
     IF_VERBOSE_1("Completed category-table construction.");
 }
 
@@ -2275,7 +2275,7 @@ void basic_category_table_t::write(const std::string &filename) const
 
     size_t num1 = m_table.size();
     fout.write((char*)&num1, sizeof(size_t));
-    
+
     IF_VERBOSE_4("Writing basic-category-table.");
 
     size_t num(0);
@@ -2292,7 +2292,7 @@ void basic_category_table_t::write(const std::string &filename) const
             ++num;
         }
     }
-    
+
     IF_VERBOSE_4(util::format("    # of entities = %d", num));
 }
 

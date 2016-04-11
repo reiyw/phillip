@@ -58,10 +58,17 @@ ilp_converter_t* weighted_converter_t::duplicate(phillip_main_t *ptr) const
 }
 
 
+void weighted_converter_t::tune(
+    const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
+    util::xml_element_t *out)
+{
+  util::print_console_fmt("Tuned.");
+}
+
 ilp::ilp_problem_t* weighted_converter_t::execute() const
 {
     auto begin = std::chrono::system_clock::now();
-    
+
     const pg::proof_graph_t *graph = phillip()->get_latent_hypotheses_set();
     ilp::ilp_problem_t *prob = new ilp::ilp_problem_t(
         graph, new ilp::basic_solution_interpreter_t(), false);
@@ -70,7 +77,7 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
     if (prob->has_timed_out()) return prob;
 
 #define _check_timeout if(do_time_out(begin)) { prob->timeout(true); return prob; }
-    
+
     // ASSIGN COSTS OF EDGES TO HYPERNODES
     hash_map<pg::node_idx_t, ilp::variable_idx_t> node2costvar;
 
@@ -154,7 +161,7 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
                 }
 
                 if (do_time_out(begin)) break;
-            }            
+            }
         }
     };
 
@@ -168,11 +175,11 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
             else
                 return 0.0;
         };
-        
+
         for (auto p : node2costvar)
         {
             if (do_time_out(begin)) break;
-            
+
             pg::node_idx_t n_idx = p.first;
             ilp::variable_idx_t nodevar = prob->find_variable_with_node(n_idx);
             ilp::variable_idx_t costvar = p.second;
@@ -234,7 +241,7 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
                 if (do_time_out(begin)) break;
             }
 
-            prob->add_constraint(cons);            
+            prob->add_constraint(cons);
         }
 
         for (pg::edge_idx_t i = 0; i < graph->edges().size(); ++i)
@@ -263,13 +270,13 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
             if (do_time_out(begin)) break;
         }
     };
-    
+
     add_variables_for_observation_cost(*phillip()->get_input());
     _check_timeout;
-    
+
     add_variables_for_hypothesis_cost();
     _check_timeout;
-    
+
     add_constraints_for_cost();
     _check_timeout;
 
@@ -278,7 +285,7 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
     prob->add_attributes("converter", "weighted");
 
 #undef _check_timeout
-    
+
     return prob;
 }
 

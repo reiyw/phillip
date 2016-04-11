@@ -80,6 +80,10 @@ public:
     virtual std::string repr() const override;
     virtual bool do_keep_validity_on_timeout() const override { return false; }
 
+    virtual void tune(
+        const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
+        util::xml_element_t *out);
+
     inline std::vector<double> get_weights(
         const pg::proof_graph_t*, pg::edge_idx_t) const;
 
@@ -149,4 +153,3 @@ std::vector<double> weighted_converter_t::get_weights(
 }
 
 }
-

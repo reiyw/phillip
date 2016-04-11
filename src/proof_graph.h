@@ -234,7 +234,7 @@ struct requirement_t
 
 /** A class to express proof-graph of latent-hypotheses-set. */
 class proof_graph_t
-{        
+{
 public:
     /** A class to generate candidates of chaining. */
     class chain_candidate_generator_t
@@ -286,7 +286,7 @@ public:
     /** Deletes logs and enumerate hypernodes to be disregarded.
      *  Call this method after creation of proof-graph. */
     void post_process();
-    
+
     inline node_idx_t add_observation(const literal_t &lit, int depth = 0);
 
     /** Add an element of requirements.
@@ -304,7 +304,7 @@ public:
      *  @return Index of new hypernode resulted in backward-chaining. */
     inline hypernode_idx_t backward_chain(
         const std::vector<node_idx_t> &target, const lf::axiom_t &axiom);
-    
+
     /** Perform forward-chaining from the target node.
      *  @param axiom The logical function of implication to use.
      *  @return Index of new hypernode resulted in forward-chaining. */
@@ -392,7 +392,7 @@ public:
     void enumerate_descendant_nodes(node_idx_t idx, hash_set<node_idx_t> *out) const;
 
     void enumerate_overlapping_hypernodes(hypernode_idx_t idx, hash_set<hypernode_idx_t> *out) const;
-    
+
     /** Return pointer of set of indices of hypernode which has the given node as its element.
      *  If any set was found, return NULL. */
     inline const hash_set<hypernode_idx_t>* search_hypernodes_with_node(node_idx_t i) const;
@@ -447,7 +447,7 @@ public:
 
     std::string hypernode2str(hypernode_idx_t i) const;
     std::string edge_to_string(edge_idx_t i) const;
-        
+
     /** Returns whether the hypernode of hn includes only sub-nodes. */
     inline bool is_hypernode_for_unification(hypernode_idx_t hn) const;
 
@@ -468,7 +468,7 @@ protected:
     {
     public:
         unifiable_variable_clusters_set_t() : m_idx_new_cluster(0) {}
-        
+
         /** Add unifiability of terms t1 & t2. */
         void add(term_t t1, term_t t2);
 
@@ -476,10 +476,10 @@ protected:
 
         inline const hash_map<index_t, hash_set<term_t> >& clusters() const;
         inline const hash_set<term_t>* find_cluster(term_t t) const;
-        
+
         /** Check whether terms t1 & t2 are unifiable. */
         inline bool is_in_same_cluster(term_t t1, term_t t2) const;
-        
+
     private:
         int m_idx_new_cluster;
         /** List of clusters.
@@ -494,7 +494,7 @@ protected:
         hash_set<term_t> m_variables;
     };
 
-    /** Get whether it is possible to unify literals p1 and p2.     
+    /** Get whether it is possible to unify literals p1 and p2.
      *  @param[in]  p1,p2 Target literals of unification.
      *  @param[out] out   The unifier of p1 and p2.
      *  @return Possibility to unify literals p1 & p2. */
@@ -597,7 +597,7 @@ protected:
     // ---- VARIABLES
 
     phillip_main_t *m_phillip;
-    
+
     std::string m_name;
     bool m_is_timeout; /// For timeout.
 
@@ -612,13 +612,13 @@ protected:
     hash_map<std::string, std::string> m_attributes;
 
     float m_threshold_distance_for_soft_unify;
-    
+
     /** Mutual exclusiveness betwen two nodes.
      *  If unifier of third value is satisfied, the node of the first key and the node of the second key cannot be hypothesized together. */
     util::triangular_matrix_t<node_idx_t, unifier_t> m_mutual_exclusive_nodes;
 
     hash_map<edge_idx_t, hash_set<edge_idx_t> > m_mutual_exclusive_edges;
-    
+
     unifiable_variable_clusters_set_t m_vc_unifiable;
 
     /** Indices of hypernodes which include unification-nodes. */
@@ -690,6 +690,7 @@ protected:
         hash_map<term_t, hash_set<node_idx_t> > term_to_nodes;
 
         hash_map<kb::arity_id_t, hash_set<node_idx_t> > arity_to_nodes;
+        hash_map<kb::arity_id_t, hash_set<node_idx_t> > arity_wc_to_nodes;
     } m_maps;
 };
 
@@ -699,5 +700,3 @@ protected:
 }
 
 #include "proof_graph.inline.h"
-
-

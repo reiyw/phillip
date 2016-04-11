@@ -192,6 +192,8 @@ public:
 
     inline std::string to_string(bool f_colored = false) const;
     inline std::string get_arity() const;
+    inline std::string get_arity_with_all_constants() const;
+    inline std::vector<std::string> get_arity_with_constants() const;
 
     inline bool is_valid() const;
     inline bool is_equality() const { return predicate == "="; }

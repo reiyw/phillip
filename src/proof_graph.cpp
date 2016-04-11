@@ -1158,8 +1158,19 @@ node_idx_t proof_graph_t::add_node(
             if (id != kb::INVALID_ARGUMENT_SET_ID)
                 m_temporal.argument_set_ids[std::make_pair(out, i)] = id;
         }
-        if (add.arity_id() != kb::INVALID_ARITY_ID)
+        if (add.arity_id() != kb::INVALID_ARITY_ID) {
             m_maps.arity_to_nodes[add.arity_id()].insert(out);
+
+            // Add mapping from arity with constants to node indices.
+            std::vector<std::string> arities = lit.get_arity_with_constants();
+
+            for(int i=0; i<arities.size(); i++) {
+              kb::arity_id_t awc_id = base->search_arity_id(arities[i]);
+
+              if(awc_id != kb::INVALID_ARITY_ID)
+                m_maps.arity_wc_to_nodes[awc_id].insert(out);
+            }
+        }
     }
 
     for (unsigned i = 0; i < lit.terms.size(); i++)
@@ -1726,6 +1737,8 @@ void proof_graph_t::_generate_mutual_exclusions(
         node_idx_t idx2 = std::get<0>(*it);
         const unifier_t uni = std::get<1>(*it);
 
+        if(target == idx2) continue;
+
         IF_VERBOSE_FULL(
             "Inconsistent: " + node(target).to_string() + ", "
             + node(idx2).to_string() + uni.to_string());
@@ -1745,44 +1758,54 @@ void proof_graph_t::_enumerate_mutual_exclusion_for_inconsistent_nodes(
     if (target1.is_equality()) return;
 
     const kb::knowledge_base_t *kb = kb::knowledge_base_t::instance();
-    std::string arity = target1.get_arity();
-    kb::arity_id_t id1 = kb->search_arity_id(arity);
+    kb::arity_id_t
+      id1 = kb->search_arity_id(target1.get_arity());
+    std::vector<std::string> wcarities1 = target1.get_arity_with_constants();
 
-    for (auto p1 : m_maps.arity_to_nodes)
-    {
-        kb::arity_id_t id2 = p1.first;
-        bool do_reverse = (id1 > id2);
-        const std::list<std::pair<term_idx_t, term_idx_t> >* terms =
-            do_reverse ?
-            kb->search_inconsistent_terms(id2, id1) :
-            kb->search_inconsistent_terms(id1, id2);
-        if (terms == NULL) continue;
+    for(int i=0; i<wcarities1.size(); i++) {
+      kb::arity_id_t id1wc = kb->search_arity_id(wcarities1[i]);
 
-        for (auto idx : p1.second)
-        {
-            const literal_t &target2 = node(idx).literal();
-            bool is_valid(true);
-            unifier_t uni;
+      if(kb::INVALID_ARITY_ID == id1wc)
+        continue;
 
-            for (auto t : (*terms))
-            {
-                const term_t &t1 = target1.terms.at(do_reverse ? t.second : t.first);
-                const term_t &t2 = target2.terms.at(do_reverse ? t.first : t.second);
-                if (t1 != t2)
-                {
-                    if (t1.is_constant() and t2.is_constant())
-                    {
-                        is_valid = false;
-                        break;
-                    }
-                    else
-                        uni.add(t1, t2);
+      for (auto p1 : m_maps.arity_wc_to_nodes)
+      {
+          kb::arity_id_t id2wc = p1.first;
+          bool do_reverse = (id1wc > id2wc);
+          const std::list<std::pair<term_idx_t, term_idx_t> >* terms =
+              do_reverse ?
+              kb->search_inconsistent_terms(id2wc, id1wc) :
+              kb->search_inconsistent_terms(id1wc, id2wc);
+          if (terms == NULL) continue;
+
+          for (auto idx : p1.second)
+          {
+              const literal_t &target2 = node(idx).literal();
+              bool is_valid(true);
+              unifier_t uni;
+
+              for (auto t : (*terms))
+              {
+                  const term_t &t1 = target1.terms.at(do_reverse ? t.second : t.first);
+                  const term_t &t2 = target2.terms.at(do_reverse ? t.first : t.second);
+                  if (t1 != t2)
+                  {
+                      if (t1.is_constant() and t2.is_constant())
+                      {
+                          is_valid = false;
+                          break;
+                      }
+                      else
+                          uni.add(t1, t2);
+                  }
+              }
+
+              if (is_valid) {
+                  out->push_back(std::make_tuple(idx, uni));
                 }
-            }
+          }
+      }
 
-            if (is_valid)
-                out->push_back(std::make_tuple(idx, uni));
-        }
     }
 }
 

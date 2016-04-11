@@ -289,6 +289,7 @@ void gurobi_t::solve(
         // Find prohibited nodes.
         for(int i=0; i<pg->nodes().size(); i++) {
           if(!prob->node_is_active(last_sol, i)) continue;
+          if(pg->node(i).type() == pg::NODE_REQUIRED) continue;
           if(-1 == pg->node(i).literal().predicate.find(phillip()->param("kbest_pred"))) continue;
 
           strLiterals += pg->node(i).to_string() + " ";
