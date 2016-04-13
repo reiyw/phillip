@@ -287,10 +287,22 @@ void gurobi_t::solve(
         string strLiterals = "";
 
         // Find prohibited nodes.
+        string kbest_pred = phillip()->param("kbest_pred");
+        bool   fKbestPredFuzzyMatch = kbest_pred.find("contains:") == 0;
+
+        if(fKbestPredFuzzyMatch) {
+          kbest_pred = kbest_pred.substr(string("contains:").length());
+        }
+
         for(int i=0; i<pg->nodes().size(); i++) {
           if(!prob->node_is_active(last_sol, i)) continue;
-          if(pg->node(i).type() == pg::NODE_REQUIRED) continue;
-          if(-1 == pg->node(i).literal().predicate.find(phillip()->param("kbest_pred"))) continue;
+          if(pg->node(i).type() != pg::NODE_HYPOTHESIS) continue;
+
+          if(fKbestPredFuzzyMatch) {
+            if(-1 == pg->node(i).literal().predicate.find(kbest_pred)) continue;
+          } else {
+            if(kbest_pred != pg->node(i).literal().predicate) continue;
+          }
 
           strLiterals += pg->node(i).to_string() + " ";
 
