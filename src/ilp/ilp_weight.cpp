@@ -258,6 +258,11 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
             if (v_uni_tail < 0 or(e_uni.head() >= 0 and v_uni_head < 0)) continue;
 
             auto from = graph->hypernode(e_uni.tail());
+
+            if (graph->node(from[0]).type() == pg::NODE_REQUIRED or
+                graph->node(from[1]).type() == pg::NODE_REQUIRED)
+                continue;
+                            
             double cost1 = get_cost_of_node(from[0]);
             double cost2 = get_cost_of_node(from[1]);
             pg::node_idx_t

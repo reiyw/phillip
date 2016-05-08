@@ -47,4 +47,10 @@ Besides each time you change the knowledge base, you need to compile it.
 
     $ bin/phil -m inference -c lhs=<NAME> -c ilp=<NAME> -c sol=<NAME> -k <KB_PREFIX> [OPTIONS] [INPUTS]
 
+## New features!
+
+- `-kbest`
+- `-abductive theorem prover`
+- Support `non-ab` literals
+
 In detail, please refer to [Phillip Wiki](https://github.com/kazeto/phillip/wiki).
