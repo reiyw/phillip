@@ -62,6 +62,7 @@ void parse_obs_t::process(const sexp::reader_t *reader)
     {
         data.req = lf::logical_function_t(*stack.children.at(i_req));
         _assert_syntax(data.req.is_valid_as_requirements(), (*reader), "Arguments of req are invalid.");
+        util::print_console("Requirement loaded.");
     }
 
     m_inputs->push_back(data);
@@ -73,7 +74,7 @@ void compile_kb_t::prepare()
 
 
 void compile_kb_t::process( const sexp::reader_t *reader )
-{    
+{
     const sexp::stack_t *stack(reader->get_stack());
     kb::knowledge_base_t *_kb = kb::knowledge_base_t::instance();
 
@@ -93,7 +94,7 @@ void compile_kb_t::process( const sexp::reader_t *reader )
             }
         }
     }
-    
+
     if (not stack->is_functor("B"))
         return;
 
@@ -108,7 +109,7 @@ void compile_kb_t::process( const sexp::reader_t *reader )
     index_t idx_as = stack->find_functor(lf::OPR_STR_EXARGSET);
     index_t idx_name = stack->find_functor(lf::OPR_STR_NAME);
     index_t idx_assert = stack->find_functor(lf::OPR_STR_ASSERTION);
-        
+
     _assert_syntax(
         (idx_lf >= 0 or idx_para >= 0 or idx_inc >= 0 or idx_pp >= 0 or idx_as >= 0 or idx_assert >= 0),
         (*reader), "No logical connectors found." );
@@ -204,7 +205,7 @@ void processor_t::process( std::vector<std::string> inputs )
     if( m_recursion++ == 0 )
         for( auto it=m_components.begin(); it!=m_components.end(); ++it )
             (*it)->prepare();
-            
+
     for( auto it=inputs.begin(); it!=inputs.end(); ++it )
     {
         std::istream *p_is( &std::cin );
@@ -212,7 +213,7 @@ void processor_t::process( std::vector<std::string> inputs )
         size_t file_size(0);
         const std::string &input_path( *it );
         std::string filename;
-        
+
         if( input_path != "-" )
         {
             file.open( input_path.c_str() );
@@ -226,10 +227,10 @@ void processor_t::process( std::vector<std::string> inputs )
         }
         else
             filename = "stdin";
-        
+
         sexp::reader_t reader( *p_is, filename );
         hash_set<long> notified;
-                
+
         for( ; not reader.is_end(); reader.read() )
         {
             if( file_size != 0 )
@@ -249,7 +250,7 @@ void processor_t::process( std::vector<std::string> inputs )
 
             for( auto it=m_components.begin(); it!=m_components.end(); ++it )
                 (*it)->process( &reader );
-            
+
             include( &reader );
         }
 
@@ -265,7 +266,7 @@ void processor_t::process( std::vector<std::string> inputs )
             throw phillip_exception_t(out);
         }
     }
-    
+
     if( --m_recursion == 0 )
         for( auto it=m_components.begin(); it!=m_components.end(); ++it )
             (*it)->quit();
@@ -281,7 +282,7 @@ void processor_t::include( const sexp::reader_t *reader )
         _assert_syntax(
             (arg.type == sexp::stack_t::STRING_STACK),
             (*reader), "what is included should be a string.");
-        
+
         std::vector<std::string> inputs( 1, arg.get_string() );
         process( inputs );
     }

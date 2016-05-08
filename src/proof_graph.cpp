@@ -1738,6 +1738,8 @@ void proof_graph_t::_generate_mutual_exclusions(
         const unifier_t uni = std::get<1>(*it);
 
         if(target == idx2) continue;
+        if(node(target).type() == pg::NODE_REQUIRED ||
+          node(idx2).type() == pg::NODE_REQUIRED) continue;
 
         IF_VERBOSE_FULL(
             "Inconsistent: " + node(target).to_string() + ", "
