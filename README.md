@@ -6,6 +6,8 @@ Phillip
 ----
 Phillip is the first-order abductive reasoner for natural language processing in C++.
 
+This is a forked project. The original project is Phillip, which is maintained by Kazeto Yamamoto  (https://github.com/kazeto/phillip).
+
 
 # Install
 ----

@@ -339,9 +339,14 @@ void gurobi_t::solve(
           }
         }
 
-        util::print_console_fmt("K-BEST: To be suppressed: %s",strLiterals.c_str());
+        util::print_console_fmt("K-BEST: To be suppressed: %d literals, %s", con_suppress.terms().size(), strLiterals.c_str());
 
         if(!do_kbest_litwise) {
+          if(con_suppress.terms().size() == 0) {
+            util::print_console("K-BEST: Nothing to be suppressed. Terminated.");
+            break;
+          }
+          
           con_suppress.set_bound(con_suppress.terms().size() - 1.0);
           _add_GRBconstraint(&model, con_suppress, vars);
         }
