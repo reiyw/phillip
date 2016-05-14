@@ -43,6 +43,13 @@ public:
         virtual std::vector<double> operator()(
             const pg::proof_graph_t*, pg::edge_idx_t) const = 0;
         virtual weight_provider_t* duplicate() const = 0;
+        virtual void set_weight(const pg::proof_graph_t*, pg::edge_idx_t, int, double) = 0;
+
+        inline const hash_map<std::string, double> &weights() const;
+        inline void set_weight(const std::string, double);
+
+    protected:
+        hash_map<std::string, double> m_updated_weights;
     };
 
     class basic_weight_provider_t : public weight_provider_t {
@@ -51,6 +58,7 @@ public:
         virtual std::vector<double> operator()(
             const pg::proof_graph_t*, pg::edge_idx_t) const;
         virtual weight_provider_t* duplicate() const;
+        virtual void set_weight(const pg::proof_graph_t*, pg::edge_idx_t, int, double);
     private:
         double m_default_weight;
     };
@@ -80,9 +88,11 @@ public:
     virtual std::string repr() const override;
     virtual bool do_keep_validity_on_timeout() const override { return false; }
 
-    virtual void tune(
+    virtual int tune(
         const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
         util::xml_element_t *out);
+    virtual void print_tuned_parameters(std::ostream*) const;
+    virtual void load_tuned_parameters(std::istream*) const;
 
     inline std::vector<double> get_weights(
         const pg::proof_graph_t*, pg::edge_idx_t) const;
@@ -148,6 +158,13 @@ std::vector<double> weighted_converter_t::get_weights(
     return (*m_weight_provider)(graph, i);
 }
 
+const hash_map<std::string, double> &weighted_converter_t::weight_provider_t::weights() const {
+    return m_updated_weights;
+}
+
+void weighted_converter_t::weight_provider_t::set_weight(const std::string id, double val) {
+    m_updated_weights[id] = val;
+}
 
 
 }

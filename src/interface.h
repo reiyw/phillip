@@ -34,7 +34,7 @@ public:
     virtual ~lhs_enumerator_t() {}
     virtual lhs_enumerator_t* duplicate(phillip_main_t *ptr) const = 0;
     virtual pg::proof_graph_t* execute() const = 0;
-    
+
 protected:
     static bool do_include_requirement(
         const pg::proof_graph_t *graph, const std::vector<index_t> &nodes);
@@ -61,9 +61,11 @@ public:
     virtual ilp::ilp_problem_t* execute() const = 0;
 
     /** Tunes its own parameters from a system output and a gold output. */
-    virtual void tune(
+    virtual int tune(
         const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
         util::xml_element_t *out) {};
+    virtual void print_tuned_parameters(std::ostream* = &std::cout) const {};
+    virtual void load_tuned_parameters(std::istream*) const {};
 
 protected:
     /** Converts proof-graph's structure into ILP problem. */
@@ -96,5 +98,3 @@ protected:
 
 
 }
-
-

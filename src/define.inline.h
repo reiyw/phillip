@@ -123,7 +123,7 @@ inline bool string_hash_t::operator < (const string_hash_t &x) const
 
 inline bool string_hash_t::operator == (const char *s) const
 {
-    return m_hash == ms_hashier.at(s);
+    return m_hash == get_hash(s); //ms_hashier.at(s);
 }
 
 
@@ -248,14 +248,14 @@ inline std::string literal_t::get_arity() const
 
 inline std::string literal_t::get_arity_with_all_constants() const
 {
-    std::string ret;
+    std::string args;
 
     for(int i=0; i<terms.size(); i++) {
       if(terms[i].is_constant())
-        ret += util::format("/%d:%s", i, std::string(terms[i]).c_str());
+        args += util::format("+%d:%s", i, std::string(terms[i]).c_str());
     }
 
-    return util::format("%s%s/%d", predicate.c_str(), ret.c_str(), terms.size());
+    return util::format("%s/%d%s", predicate.c_str(), terms.size(), args.c_str());
 }
 
 

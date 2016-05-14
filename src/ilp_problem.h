@@ -363,6 +363,9 @@ public:
     inline bool constraint_is_satisfied(constraint_idx_t idx) const;
 
     void enumerate_unified_terms_sets(std::list<hash_set<term_t> > *out) const;
+    void get_reduced_sol(std::set<literal_t>*, std::set<literal_t>*, const std::list< hash_set<term_t> >&) const;
+    bool contains(const literal_t &) const;
+    bool contains(const std::vector<pg::requirement_t>&) const;
 
     /** Prints the solution hypothesis in human readable format to os. */
     void print_human_readable_hypothesis(std::ostream *os) const;

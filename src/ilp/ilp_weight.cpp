@@ -57,14 +57,6 @@ ilp_converter_t* weighted_converter_t::duplicate(phillip_main_t *ptr) const
         ptr, m_default_observation_cost, m_weight_provider->duplicate());
 }
 
-
-void weighted_converter_t::tune(
-    const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
-    util::xml_element_t *out)
-{
-  util::print_console_fmt("Tuned.");
-}
-
 ilp::ilp_problem_t* weighted_converter_t::execute() const
 {
     auto begin = std::chrono::system_clock::now();
@@ -157,6 +149,11 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
                 {
                     double cost = m_is_logarithmic ?
                         (cost_from + weights[i]) : (cost_from * weights[i]);
+
+                    if(graph->node(hn_to[i]).literal().predicate == "etc") {
+                        cost = weights[i];
+                    }
+
                     add_variable_for_cost(hn_to[i], cost);
                 }
 
@@ -262,7 +259,7 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
             if (graph->node(from[0]).type() == pg::NODE_REQUIRED or
                 graph->node(from[1]).type() == pg::NODE_REQUIRED)
                 continue;
-                            
+
             double cost1 = get_cost_of_node(from[0]);
             double cost2 = get_cost_of_node(from[1]);
             pg::node_idx_t
@@ -341,6 +338,11 @@ std::vector<double> weighted_converter_t::basic_weight_provider_t::operator()(
         {
             if (branch.param2double(&weights[0]))
                 do_use_default = false;
+
+            if (m_updated_weights.count(branch.literal().terms[0]) > 0) {
+                weights[0] = m_updated_weights.find(branch.literal().terms[0])->second;
+                do_use_default = false;
+            }
         }
         else
         {
@@ -350,6 +352,12 @@ std::vector<double> weighted_converter_t::basic_weight_provider_t::operator()(
                     do_use_default = false;
                 else
                     weights[i] = 0.0;
+
+                if (m_updated_weights.count(branch.branch(i).literal().terms[0]) > 0) {
+                    weights[i] = m_updated_weights.find(branch.branch(i).literal().terms[0])->second;
+                    do_use_default = false;
+                }
+
             }
         }
     }
@@ -360,6 +368,73 @@ std::vector<double> weighted_converter_t::basic_weight_provider_t::operator()(
     return weights;
 }
 
+void weighted_converter_t::basic_weight_provider_t::set_weight(const pg::proof_graph_t *graph, pg::edge_idx_t i, int l, double new_weight) {
+    const pg::edge_t &edge = graph->edge(i);
+    m_updated_weights[graph->node(graph->hypernode(edge.head())[l]).literal().terms[0]] = new_weight;
+}
+
+int weighted_converter_t::tune(
+    const ilp::ilp_solution_t &sys, const ilp::ilp_solution_t &gold,
+    util::xml_element_t *out)
+{
+    const pg::proof_graph_t *graph = phillip()->get_latent_hypotheses_set();
+    const ilp::ilp_problem_t *prob = phillip()->get_ilp_problem();
+    int   num_updates = 0;
+
+    for(auto e=0; e<graph->edges().size(); e++) {
+        if(graph->edge(e).is_unify_edge())
+            continue;
+
+        // We are interested in diff.
+        if(prob->edge_is_active(sys, e) == prob->edge_is_active(gold, e))
+            continue;
+
+        // Update the current weight.
+        std::vector<double> weights((*m_weight_provider)(graph, e));
+        bool fPromote = prob->edge_is_active(gold, e);
+        double update = 0.1 * (fPromote ? -1.0 : 1.0);
+
+        util::print_console((fPromote ? "PROMOTE: " : "SUPPRESS: ") + graph->edge_to_string(e));
+
+        // Update the body literals.
+        const std::vector<pg::node_idx_t> &hn = graph->hypernode(graph->edge(e).head());
+        for(int l=0; l<hn.size(); l++) {
+            if("etc" != graph->node(hn[l]).literal().predicate) continue;
+
+            num_updates++;
+
+            double new_weight = weights[l] + update;
+            util::print_console_fmt(" Update: %s: %s: %lf => %lf",
+            graph->node(hn[l]).to_string().c_str(),
+            ((std::string)(graph->node(hn[l]).literal().terms[0])).c_str(),
+            weights[l], new_weight);
+
+            (*m_weight_provider).set_weight(graph, e, l, new_weight);
+        }
+    }
+
+    util::print_console_fmt("Tuned.");
+
+    return num_updates;
+}
+
+void weighted_converter_t::print_tuned_parameters(std::ostream *os) const {
+    const pg::proof_graph_t *graph = phillip()->get_latent_hypotheses_set();
+
+    for(auto w : (*m_weight_provider).weights()) {
+        (*os) << w.first << "\t" << w.second << std::endl;
+    }
+}
+
+void weighted_converter_t::load_tuned_parameters(std::istream *is) const {
+    const pg::proof_graph_t *graph = phillip()->get_latent_hypotheses_set();
+    std::string weight_id;
+    double      weight_value;
+
+    while((*is) >> weight_id >> weight_value) {
+        (*m_weight_provider).set_weight(weight_id, weight_value);
+    }
+}
 
 weighted_converter_t::weight_provider_t*
 weighted_converter_t::basic_weight_provider_t::duplicate() const

@@ -176,9 +176,9 @@ void execute(
     auto proc = [&](const lf::input_t &ipt)
     {
         if (config.mode == bin::EXE_MODE_INFERENCE)
-            phillip->infer(ipt);
+            return phillip->infer(ipt);
         else
-            phillip->learn(ipt);
+            return phillip->learn(ipt);
     };
 
     /* INFERENCE */
@@ -189,6 +189,8 @@ void execute(
         proc::processor_t processor;
         bool flag_printing(false);
 
+        phillip->load_tuned_parameters();
+
         util::print_console("Loading observations ...");
 
         processor.add_component(new proc::parse_obs_t(&parsed_inputs));
@@ -197,52 +199,76 @@ void execute(
         util::print_console("Completed to load observations.");
         util::print_console_fmt("    # of observations: %d", parsed_inputs.size());
 
+        std::srand(unsigned(phillip->param_int("rnd_seed", 20160511)));
+
         kb::kb()->prepare_query();
         phillip->check_validity();
 
-        // SOLVE EACH OBSERVATION
-        for (int i = 0; i < parsed_inputs.size(); ++i)
-        {
-            const lf::input_t &ipt = parsed_inputs.at(i);
+        // SOLVE OR LEARN EACH OBSERVATION
+        int max_iter = config.mode == bin::EXE_MODE_INFERENCE ? 1 : phillip->param_int("learn_iter", 5);
 
-            std::string obs_name = ipt.name;
-            if (obs_name.rfind("::") != std::string::npos)
-                obs_name = obs_name.substr(obs_name.rfind("::") + 2);
+        for (int iter = 0; iter < max_iter; iter++) {
+            int learn_updates = 0;
 
-            if (phillip->is_target(obs_name) and
-                not phillip->is_excluded(obs_name))
-            {
-                if (not flag_printing)
-                {
-                    phillip->write_header();
-                    flag_printing = true;
-                }
-
-                util::print_console_fmt("Observation #%d: %s", i, ipt.name.c_str());
-                kb::kb()->clear_distance_cache();
-
-#ifdef _DEBUG
-                /* DO NOT HANDLE EXCEPTIONS TO LET THE DEBUGGER CATCH AN EXCEPTION. */
-                proc(ipt);
-#else
-                try
-                {
-                    proc(ipt);
-                }
-                catch (const std::exception &e)
-                {
-                    util::print_warning_fmt(
-                        "Some exception was caught and then the observation \"%s\" was skipped.", obs_name.c_str());
-                    util::print_warning_fmt("  -> what(): %s", e.what());
-                    continue;
-                }
-#endif
+            if(config.mode == bin::EXE_MODE_LEARNING) {
+                util::print_console_fmt("%d-th learning iteration.", 1+iter);
+                std::random_shuffle(parsed_inputs.begin(), parsed_inputs.end());
             }
 
-            auto sols = phillip->get_solutions();
-            for (auto sol = sols.begin(); sol != sols.end(); ++sol)
-                sol->print_graph();
+            for (int i = 0; i < parsed_inputs.size(); ++i)
+            {
+                const lf::input_t &ipt = parsed_inputs.at(i);
+
+                std::string obs_name = ipt.name;
+                if (obs_name.rfind("::") != std::string::npos)
+                    obs_name = obs_name.substr(obs_name.rfind("::") + 2);
+
+                if (phillip->is_target(obs_name) and
+                    not phillip->is_excluded(obs_name))
+                {
+                    if (not flag_printing)
+                    {
+                        phillip->write_header();
+                        flag_printing = true;
+                    }
+
+                    util::print_console_fmt("Observation #%d: %s", i, ipt.name.c_str());
+                    kb::kb()->clear_distance_cache();
+
+    #ifdef _DEBUG
+                    /* DO NOT HANDLE EXCEPTIONS TO LET THE DEBUGGER CATCH AN EXCEPTION. */
+                    learn_updates += proc(ipt);
+    #else
+                    try
+                    {
+                        learn_updates += proc(ipt);
+                    }
+                    catch (const std::exception &e)
+                    {
+                        util::print_warning_fmt(
+                            "Some exception was caught and then the observation \"%s\" was skipped.", obs_name.c_str());
+                        util::print_warning_fmt("  -> what(): %s", e.what());
+                        continue;
+                    }
+    #endif
+                }
+
+                auto sols = phillip->get_solutions();
+                for (auto sol = sols.begin(); sol != sols.end(); ++sol)
+                    sol->print_graph();
+            }
+
+            if(config.mode == bin::EXE_MODE_LEARNING) {
+                util::print_console_fmt("Updates: %d", learn_updates);
+
+                if(learn_updates == 0) {
+                    util::print_console("Converged.");
+                    break;
+                }
+            }
         }
+
+        phillip->write_tuned_parameters();
 
         if (flag_printing)
             phillip->write_footer();
@@ -255,12 +281,12 @@ bool parse_options(
     execution_configure_t *config, inputs_t *inputs)
 {
     int opt;
-    
+
     while ((opt = getopt(argc, argv, ACCEPTABLE_OPTIONS)) != -1)
     {
         std::string arg((optarg == NULL) ? "" : optarg);
         int ret = _interpret_option( opt, arg, phillip, config, inputs );
-        
+
         if (not ret)
             throw phillip_exception_t(
             "Any error occured during parsing command line options:"
@@ -287,7 +313,7 @@ bool _load_config_file(
         "Cannot open setting file \"%s\"", filename));
 
     util::print_console_fmt("Loading setting file \"%s\"", filename);
-    
+
     while( not fin.eof() )
     {
         fin.getline( line, 2048 );
@@ -295,7 +321,7 @@ bool _load_config_file(
 
         std::string sline(line);
         auto spl = phil::util::split(sline, " \t", 1);
-        
+
         if( spl.empty() ) continue;
 
         if( spl.at(0).at(0) == '-' )
@@ -303,7 +329,7 @@ bool _load_config_file(
             int opt = static_cast<int>( spl.at(0).at(1) );
             std::string arg = (spl.size() <= 1) ? "" : util::strip(spl.at(1), "\n");
             int ret = _interpret_option( opt, arg, phillip, config, inputs );
-            
+
             if (not ret)
                 throw phillip_exception_t(
                 "Any error occured during parsing command line options:"
@@ -324,7 +350,7 @@ bool _interpret_option(
 {
     switch(opt)
     {
-        
+
     case 'c': // ---- SET COMPONENT
     {
         int idx( arg.find('=') );
@@ -360,7 +386,7 @@ bool _interpret_option(
         }
         return false;
     }
-    
+
     case 'f':
         phillip->set_flag(arg);
         return true;
@@ -368,7 +394,7 @@ bool _interpret_option(
     case 'h':
         config->mode = EXE_MODE_HELP;
         return true;
-    
+
     case 'k': // ---- SET FILENAME OF KNOWLEDGE-BASE
     {
         config->kb_name = util::normalize_path(arg);
@@ -381,7 +407,7 @@ bool _interpret_option(
         _load_config_file(path.c_str(), phillip, config, inputs);
         return true;
     }
-    
+
     case 'm': // ---- SET MODE
     {
         if (config->mode != EXE_MODE_HELP)
@@ -432,11 +458,11 @@ bool _interpret_option(
             return true;
         }
     }
-                
+
     case 'p': // ---- SET PARAMETER
     {
         int idx(arg.find('='));
-        
+
         if( idx != std::string::npos )
         {
             std::string key = arg.substr(0, idx);
@@ -447,14 +473,14 @@ bool _interpret_option(
         }
         else
             phillip->set_param(arg, "");
-        
+
         return true;
     }
 
     case 't': // ---- SET NAME OF THE OBSERVATION TO SOLVE
     {
         if (arg.empty()) return false;
-        
+
         if (arg.at(0) == '!')
             config->excluded_obs_names.insert(arg.substr(1));
         else
@@ -513,7 +539,7 @@ bool _interpret_option(
     }
 
     case 'T': // ---- SET TIMEOUT [SECOND]
-    {                  
+    {
         float t;
         auto spl = util::split(arg, "=");
         if (spl.size() == 1)
@@ -538,12 +564,12 @@ bool _interpret_option(
         else
             return false;
     }
-    
+
     case ':':
     case '?':
         return false;
     }
-    
+
     return false;
 }
 

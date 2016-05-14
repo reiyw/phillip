@@ -72,7 +72,7 @@ std::ofstream* _open_file(const std::string &path, std::ios::openmode mode)
 }
 
 
-void phillip_main_t::infer(const lf::input_t &input)
+int phillip_main_t::infer(const lf::input_t &input)
 {
     reset_for_inference();
     set_input(input);
@@ -92,10 +92,12 @@ void phillip_main_t::infer(const lf::input_t &input)
             sol->print_graph(fo);
         delete fo;
     }
+
+    return 0;
 }
 
 
-void phillip_main_t::learn(const lf::input_t &input)
+int phillip_main_t::learn(const lf::input_t &input)
 {
     auto get_path_for_gold = [this](const std::string &key) -> std::string
     {
@@ -116,23 +118,46 @@ void phillip_main_t::learn(const lf::input_t &input)
 
     auto begin = std::chrono::system_clock::now();
 
-    erase_flag("get_pseudo_positive");
-
     execute_enumerator();
+
+    // Purely predict (with tie-care).
+    assert(flag("kbest") && param_int("kbest_k", -1) == 1);
+    
+    erase_flag("get_pseudo_positive");
     execute_convertor();
     execute_solver();
 
-    set_flag("get_pseudo_positive");
-
-    execute_convertor(
-        &m_ilp_gold, &m_time_for_convert_gold,
-        get_path_for_gold("path_ilp_out"));
-    execute_solver(
-        &m_sol_gold, &m_time_for_solve_gold,
-        get_path_for_gold("path_sol_out"));
-
     util::xml_element_t elem("learn", "");
-    m_ilp_convertor->tune(m_sol.front(), m_sol_gold.front(), &elem);
+    int num_updates = 0;
+
+    // Check if the required literals are included in a top-scored hypotheses.
+
+    // Identify a good solution. If there is no good solution, then get it through inference.
+    int good_sol = -1;
+    std::vector<int> bad_sols;
+
+    for(auto i=0; i<m_sol.size(); i++) {
+        if(m_sol[i].contains(get_latent_hypotheses_set()->requirements())) {
+            good_sol = i;
+        } else {
+            bad_sols.push_back(i);
+        }
+    }
+
+    if(-1 == good_sol) {
+        util::print_console("No good solution found. Run latent variable completion...");
+        set_flag("get_pseudo_positive");
+        execute_convertor();
+        execute_solver();
+
+        good_sol = m_sol.size()-1;
+    }
+
+    // Update the weights.
+    for(auto bad_sol: bad_sols) {
+        m_ilp_convertor->tune(m_sol[bad_sol], m_sol[good_sol], &elem);
+        num_updates++;
+    }
 
     m_time_for_learn = util::duration_time(begin);
 
@@ -141,12 +166,14 @@ void phillip_main_t::learn(const lf::input_t &input)
     {
         if (not flag("omit_proof_graph_from_xml"))
         {
-            m_sol.front().print_graph(fo);
-            m_sol_gold.front().print_graph(fo);
+          for (auto sol = m_sol.begin(); sol != m_sol.end(); ++sol)
+              sol->print_graph(fo);
         }
         elem.print(fo);
         delete fo;
     }
+
+    return std::min(num_updates, 1);
 }
 
 
@@ -168,7 +195,7 @@ void phillip_main_t::execute_enumerator(
         "Completed generating latent-hypotheses-set.");
 
     if (not path_out_xml.empty())
-    {       
+    {
         std::ios::openmode mode = std::ios::out | std::ios::app;
         std::ofstream *fo = _open_file(path_out_xml, mode);
         if (fo != NULL)
@@ -235,6 +262,29 @@ void phillip_main_t::execute_solver(
 }
 
 
+void phillip_main_t::write_tuned_parameters() const {
+
+    std::ofstream *fo(NULL);
+    if ((fo = _open_file(param("tuned_param_out"), std::ios::out)) != NULL) {
+        ilp_convertor()->print_tuned_parameters(fo);
+        delete fo;
+    }
+
+}
+
+
+void phillip_main_t::load_tuned_parameters() {
+
+    if(param("tuned_param_in") != "") {
+        util::print_console_fmt("Loading weight values from %s...", param("tuned_param_in").c_str());
+        std::ifstream fi(param("tuned_param_in"));
+        ilp_convertor()->load_tuned_parameters(&fi);
+        fi.close();
+    }
+
+}
+
+
 void phillip_main_t::write_header() const
 {
     auto write = [this](std::ostream *os)
@@ -266,7 +316,7 @@ void phillip_main_t::write_header() const
             }
             return out + util::format(" %2d %4d %02d:%02d:%02d", day, year, hour, min, sec);
         };
-        
+
         (*os)
             << "<time_stamp compiled=\"" << util::format("%s %s", __DATE__, __TIME__)
             << "\" executed=\"" << get_time_stamp_exe()

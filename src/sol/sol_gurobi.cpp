@@ -156,8 +156,8 @@ void gurobi_t::solve(
       }
     }
 
-    double last_objval          = 0.0;
-    int    K                    = 0;
+    double last_objval = 0.0;
+    int    K           = 0, trial = 0;
 
     while(K < len) {
 
@@ -257,30 +257,39 @@ void gurobi_t::solve(
           break;
         }
 
-        if(model.get(GRB_DoubleAttr_ObjVal) != last_objval) {
-          K++;
+        if(trial >= 1) {
+           ilp::ilp_solution_t& last_sol = (*out)[out->size()-1];
 
-        } else if(out->size() > 2) {
-          ilp::ilp_solution_t& previous_sol = (*out)[out->size()-2], last_sol = (*out)[out->size()-1];
-          bool fSame = true;
+          if(model.get(GRB_DoubleAttr_ObjVal) != last_objval) {
+            K++;
 
-          for(int i=0; i<pg->nodes().size(); i++) {
-            if(prob->node_is_active(previous_sol, i) != prob->node_is_active(last_sol, i)) {
-              fSame = false;
+            if(1 == len) {
+                out->pop_back();
+                break;
+            }
+
+          } else if(trial >= 2) {
+            ilp::ilp_solution_t& previous_sol = (*out)[out->size()-2];
+            bool fSame = true;
+
+            for(int i=0; i<pg->nodes().size(); i++) {
+              if(prob->node_is_active(previous_sol, i) != prob->node_is_active(last_sol, i)) {
+                fSame = false;
+                break;
+              }
+            }
+
+            if(fSame) {
+              util::print_console_fmt("K-BEST: Got the exactly same solution. Terminated. ");
               break;
             }
-          }
-
-          if(fSame) {
-            util::print_console_fmt("K-BEST: Got the exactly same solution. Terminated. ");
-            break;
           }
         }
 
         ilp::ilp_solution_t &last_sol = (*out)[out->size()-1];
         last_objval = model.get(GRB_DoubleAttr_ObjVal);
 
-        util::print_console_fmt("K-BEST: Got a %d-th best solution (obj. = %f)", K, last_objval);
+        util::print_console_fmt("K-BEST: Got a %d-th best solution (obj. = %f)", 1+K, last_objval);
 
         // Get indices of ILP variables to construct an ILP constraint.
         ilp::constraint_t con_suppress("SUPPRESSOR", ilp::OPR_LESS_EQ, 1);
@@ -346,13 +355,14 @@ void gurobi_t::solve(
             util::print_console("K-BEST: Nothing to be suppressed. Terminated.");
             break;
           }
-          
+
           con_suppress.set_bound(con_suppress.terms().size() - 1.0);
           _add_GRBconstraint(&model, con_suppress, vars);
         }
 
       } else break;
 
+      trial++;
     }
 
 #endif

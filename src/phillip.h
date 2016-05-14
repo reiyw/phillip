@@ -40,15 +40,15 @@ public:
     ~phillip_main_t();
 
     phillip_main_t* duplicate() const;
-    
+
     /** Infer a explanation to given observation.
      *  You can get the results via accesser functions.
      *  @param inputs A list of observations.
      *  @param idx    Index of an observation to infer. */
-    void infer(const lf::input_t &input);
+    int infer(const lf::input_t &input);
 
     /** Do learning on given observation. */
-    void learn(const lf::input_t &input);
+    int learn(const lf::input_t &input);
 
     inline const lhs_enumerator_t* lhs_enumerator() const;
     inline lhs_enumerator_t* lhs_enumerator();
@@ -71,7 +71,7 @@ public:
 
     inline void set_flag(const std::string &key);
     inline void erase_flag(const std::string &key);
-    
+
     inline const lf::input_t* get_input() const;
     inline const lf::logical_function_t* get_observation() const;
     inline const lf::logical_function_t* get_requirement() const;
@@ -105,7 +105,10 @@ public:
     inline void clear_exclusions();
     inline bool is_excluded(const std::string &name) const;
     inline bool check_validity() const;
+
+    void load_tuned_parameters();
     
+    void write_tuned_parameters() const;
     void write_header() const;
     void write_footer() const;
 
@@ -116,7 +119,7 @@ protected:
     inline void execute_enumerator();
     inline void execute_convertor();
     inline void execute_solver();
-    
+
     void execute_enumerator(
         pg::proof_graph_t **out_lhs, duration_time_t *out_time,
         const std::string &path_out_xml);
@@ -140,7 +143,7 @@ private:
     hash_map<std::string, std::string> m_params;
     hash_set<std::string> m_flags;
     util::timeout_t m_timeout_lhs, m_timeout_ilp, m_timeout_sol, m_timeout_all;
-    
+
     hash_set<std::string> m_target_obs_names;
     hash_set<std::string> m_excluded_obs_names;
 
@@ -174,4 +177,3 @@ private:
 
 
 #include "./phillip.inline.h"
-

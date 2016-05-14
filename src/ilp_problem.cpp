@@ -1186,13 +1186,10 @@ void ilp_solution_t::enumerate_unified_terms_sets(std::list<hash_set<term_t> > *
 }
 
 
-void ilp_solution_t::print_human_readable_hypothesis(std::ostream *os) const
-{
+void ilp_solution_t::get_reduced_sol(std::set<literal_t> *p_literals, std::set<literal_t> *p_non_eqs, const std::list< hash_set<term_t> > &terms) const {
+
     const ilp_problem_t *prob = problem();
     const pg::proof_graph_t *graph = prob->proof_graph();
-    std::set<literal_t> literals;
-    std::set<literal_t> non_eqs;
-    std::list< hash_set<term_t> > terms;
 
     auto reguralized =
         [](const std::list<hash_set<term_t> > &terms, const literal_t &lit) -> literal_t
@@ -1210,8 +1207,6 @@ void ilp_solution_t::print_human_readable_hypothesis(std::ostream *os) const
         return out;
     };
 
-    enumerate_unified_terms_sets(&terms);
-
     // ENUMERATE ELEMENTS OF literals AND non_eqs
     for (auto n : graph->nodes())
     if (not n.is_equality_node())
@@ -1223,11 +1218,21 @@ void ilp_solution_t::print_human_readable_hypothesis(std::ostream *os) const
         if (variable_is_active(v))
         {
             if (n.is_non_equality_node())
-                literals.insert(reguralized(terms, n.literal()));
+                p_non_eqs->insert(reguralized(terms, n.literal()));
             else
-                non_eqs.insert(reguralized(terms, n.literal()));
+                p_literals->insert(reguralized(terms, n.literal()));
         }
     }
+}
+
+void ilp_solution_t::print_human_readable_hypothesis(std::ostream *os) const
+{
+    std::set<literal_t> literals;
+    std::set<literal_t> non_eqs;
+    std::list< hash_set<term_t> > terms;
+
+    enumerate_unified_terms_sets(&terms);
+    get_reduced_sol(&literals, &non_eqs, terms);
 
     (*os) << "<hypothesis>" << std::endl;
     (*os)
@@ -1242,6 +1247,53 @@ void ilp_solution_t::print_human_readable_hypothesis(std::ostream *os) const
 
     (*os) << ")" << std::endl;
     (*os) << "</hypothesis>" << std::endl;
+}
+
+
+bool ilp_solution_t::contains(const literal_t &target) const {
+    std::set<literal_t> literals;
+    std::set<literal_t> non_eqs;
+    std::list< hash_set<term_t> > terms;
+
+    enumerate_unified_terms_sets(&terms);
+    get_reduced_sol(&literals, &non_eqs, terms);
+
+    for(auto l: literals) {
+        bool fSatisfied(true);
+
+        // Does the arity of l match?
+        if(target.predicate != l.predicate || target.terms.size() != l.terms.size()) {
+            continue;
+        }
+
+        for(auto i = 0; i<l.terms.size(); i++) {
+            if(target.terms[i] == "_") continue;
+            if(target.terms[i] != l.terms[i]) fSatisfied = false;
+        }
+
+        if(fSatisfied) return true;
+    }
+
+    return false;
+}
+
+
+bool ilp_solution_t::contains(const std::vector<pg::requirement_t> &reqs) const {
+    // Disjunction
+    for(auto req: reqs) {
+        bool fSatisfied(true);
+
+        // Conjunction
+        for(auto req_ele: req.conjunction) {
+            if(!contains(req_ele.literal)) {
+                fSatisfied = false; break;
+            }
+        }
+
+        if(fSatisfied) return true;
+    }
+
+    return false;
 }
 
 

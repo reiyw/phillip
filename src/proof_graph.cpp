@@ -1768,7 +1768,7 @@ void proof_graph_t::_enumerate_mutual_exclusion_for_inconsistent_nodes(
       kb::arity_id_t id1wc = kb->search_arity_id(wcarities1[i]);
 
       if(kb::INVALID_ARITY_ID == id1wc)
-        continue;
+          continue;
 
       for (auto p1 : m_maps.arity_wc_to_nodes)
       {
