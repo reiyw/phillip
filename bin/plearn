@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import glob
+import csv
+import collections
+import optparse
+
+PHILDIR = os.path.dirname(__file__)
+
+#
+# The idea is from Distributed Learning Strategy for Structured Perceptron McDonal et al., NAACL2010.
+
+
+def aggregateWeights(files):
+    new_weights = collections.defaultdict(float)
+
+    for fn in files:
+        for fname, fval in csv.reader(open(fn), delimiter="\t"):
+            new_weights[fname] += float(fval)
+
+    return new_weights, len(files)
+
+
+def writeAveragedWeights(f_dist, weights, count):
+    for fname, fval in weights.iteritems():
+        print >>f_dist, "%s\t%f" % (fname, fval/count)
+
+
+def main():
+    cmdparser = optparse.OptionParser(description="Distributed Trainer for Phillip.")
+    cmdparser.add_option("--iter", default=5, type=int, help="Iteration.")
+    cmdparser.add_option("--workdir")
+    cmdparser.add_option("--output")
+    cmdparser.add_option("--phoptions", help="Parameters passed to Phillip.")
+    cmdparser.add_option("--parallel", default=2, type=int, help="The number of parallel processes for distributed training.")
+    options, args = cmdparser.parse_args()
+
+    if None == options.workdir:
+        cmdparser.error("Working directory is not specified.")
+
+    os.system("mkdir -p %s" % options.workdir)
+    os.system("echo '' > %s/model.tsv" % options.workdir)
+    os.system("rm %s/*.part_*" % options.workdir)
+
+    lines = int(os.popen("cat %s | wc -l" % args[0]).read().strip())
+
+    for it in xrange(options.iter):
+        print >>sys.stderr, "Iteration:", 1+it
+
+        os.system("shuf %s | split -l %d - %s/train.lisp.part_" % (args[0], 1+lines/options.parallel, options.workdir))
+
+        cmd = "file={}; fnpart=${file##*part_}; %s/phil -m learn -k ./tmp/160323_kb \
+            -o %s/learn.xml.part_$fnpart \
+            -p tuned_param_in=%s/model.tsv \
+            -p tuned_param_out=%s/model.tsv.part_$fnpart \
+            -p learn_iter=1 \
+            %s \
+            {} \
+            2> %s/learn.log.txt.part_$fnpart > /dev/null" % (
+            PHILDIR, options.workdir, options.workdir, options.workdir, options.phoptions, options.workdir,
+            )
+
+        os.system("ls %s/train.lisp.part_* | parallel -j %d '%s'" % (options.workdir, options.parallel, cmd))
+
+        with open("%s/model.tsv" % options.workdir, "w") as f_dist:
+            weights, count = aggregateWeights(glob.glob("%s/model.tsv.part_*" % options.workdir))
+            writeAveragedWeights(f_dist, weights, count)
+
+        os.system("cd %s; cp model.tsv model.i%d.tsv" % (options.workdir, 1+it))
+
+        if options.output != None:
+            os.system("cp %s/model.tsv %s" % (options.workdir, options.output))
+
+if "__main__" == __name__:
+    main()
