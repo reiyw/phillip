@@ -207,6 +207,8 @@ void execute(
         // SOLVE OR LEARN EACH OBSERVATION
         int max_iter = config.mode == bin::EXE_MODE_INFERENCE ? 1 : phillip->param_int("learn_iter", 5);
 
+        int infer_correct = 0;
+
         for (int iter = 0; iter < max_iter; iter++) {
             int learn_updates = 0;
 
@@ -254,8 +256,14 @@ void execute(
                 }
 
                 auto sols = phillip->get_solutions();
-                for (auto sol = sols.begin(); sol != sols.end(); ++sol)
+                bool fCorrect(true);
+
+                for (auto sol = sols.begin(); sol != sols.end(); ++sol) {
+                    fCorrect &= sol->contains(phillip->get_latent_hypotheses_set()->requirements());
                     sol->print_graph();
+                }
+
+                if(fCorrect) infer_correct++;
             }
 
             if(config.mode == bin::EXE_MODE_LEARNING) {
@@ -267,6 +275,9 @@ void execute(
                 }
             }
         }
+
+        if(config.mode == bin::EXE_MODE_INFERENCE)
+            phillip->write_accuracy(infer_correct, parsed_inputs.size());
 
         phillip->write_tuned_parameters();
 

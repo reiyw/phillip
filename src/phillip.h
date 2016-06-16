@@ -107,7 +107,8 @@ public:
     inline bool check_validity() const;
 
     void load_tuned_parameters();
-    
+
+    void write_accuracy(int, int) const;
     void write_tuned_parameters() const;
     void write_header() const;
     void write_footer() const;

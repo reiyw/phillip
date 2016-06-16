@@ -121,8 +121,13 @@ int phillip_main_t::learn(const lf::input_t &input)
     execute_enumerator();
 
     // Purely predict (with tie-care).
-    assert(flag("kbest") && param_int("kbest_k", -1) == 1);
-    
+    assert(flag("kbest"));
+
+    if(param_float("margin", 0.0) > 0.0)
+        set_param("kbest_k", "2");
+    else
+        set_param("kbest_k", "1");
+
     erase_flag("get_pseudo_positive");
     execute_convertor();
     execute_solver();
@@ -146,6 +151,7 @@ int phillip_main_t::learn(const lf::input_t &input)
 
     if(-1 == good_sol) {
         util::print_console("No good solution found. Run latent variable completion...");
+        set_param("kbest_k", "1");
         set_flag("get_pseudo_positive");
         execute_convertor();
         execute_solver();
@@ -155,6 +161,10 @@ int phillip_main_t::learn(const lf::input_t &input)
 
     // Update the weights.
     for(auto bad_sol: bad_sols) {
+        if(m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function() >= param_float("margin", 0.0)) continue;
+
+        util::print_console_fmt("Margin: %f", m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function());
+
         m_ilp_convertor->tune(m_sol[bad_sol], m_sol[good_sol], &elem);
         num_updates++;
     }
@@ -259,6 +269,23 @@ void phillip_main_t::execute_solver(
             delete fo;
         }
     }
+}
+
+
+void phillip_main_t::write_accuracy(int num_correct, int num_total) const {
+
+    std::ofstream *fo(NULL);
+    if ((fo = _open_file(param("path_out"), std::ios::out | std::ios::app)) != NULL) {
+        (*fo) << "<performance>" << std::endl
+              << "<correct>" << num_correct << "</correct>" << std::endl
+              << "<total>" << num_total << "</total>" << std::endl
+              << "<accuracy>" << (float)num_correct / num_total << "</accuracy>" << std::endl
+              << "</performance>" << std::endl
+              ;
+
+        delete fo;
+    }
+
 }
 
 

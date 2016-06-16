@@ -150,8 +150,17 @@ ilp::ilp_problem_t* weighted_converter_t::execute() const
                     double cost = m_is_logarithmic ?
                         (cost_from + weights[i]) : (cost_from * weights[i]);
 
-                    if(graph->node(hn_to[i]).literal().predicate == "etc") {
-                        cost = weights[i];
+                    if(phillip()->flag("abductive_theorem_prover") && phillip()->flag("tp_hard")) {
+                        if(graph->node(hn_to[i]).literal().predicate == "etc")
+                            cost = 0.0;
+                        else
+                            cost = 9999;
+
+                    } else {
+                        if(graph->node(hn_to[i]).literal().predicate == "etc") {
+                            cost = exp(weights[i]);
+                        }
+
                     }
 
                     add_variable_for_cost(hn_to[i], cost);

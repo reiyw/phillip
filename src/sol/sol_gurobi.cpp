@@ -263,7 +263,7 @@ void gurobi_t::solve(
           if(model.get(GRB_DoubleAttr_ObjVal) != last_objval) {
             K++;
 
-            if(1 == len) {
+            if(K == len) {
                 out->pop_back();
                 break;
             }
