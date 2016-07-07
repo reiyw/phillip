@@ -51,7 +51,7 @@ def main():
 
         os.system("shuf %s | split -l %d - %s/train.lisp.part_" % (args[0], 1+lines/options.parallel, options.workdir))
 
-        cmd = "file={}; fnpart=${file##*part_}; %s/phil -m learn -k ./tmp/160323_kb \
+        cmd = "file={}; fnpart=${file##*part_}; %s/phil -m learn \
             -o %s/learn.xml.part_$fnpart \
             -p tuned_param_in=%s/model.tsv \
             -p tuned_param_out=%s/model.tsv.part_$fnpart \
