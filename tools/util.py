@@ -39,7 +39,7 @@ class SimpleTable(object):
         array = [self.header] + self.rows + [self.footer]
         return [max(self._unicode_width(s) for s in ss)
                 for ss in izip_longest(*array, fillvalue='')]
-    
+
     def _unicode_width(self, s, width={'F': 2, 'H': 1, 'W': 2, 'Na': 1, 'A': 2, 'N': 1}):
         s = self._format(s, 0)
         return sum(width[east_asian_width(c)] for c in s)
@@ -51,7 +51,7 @@ class SimpleTable(object):
             return unicode('%.3f' % s).rjust(n)
         else:
             return unicode(s).ljust(n)
-        
+
     def _get_printable_row(self, row, maxes):
         return '| ' + \
                ' | '.join([self._format(r, m)
@@ -59,40 +59,40 @@ class SimpleTable(object):
 
     def _get_printable_header(self, maxes):
         return self._get_printable_row(self.header, maxes)
-    
+
     def _get_printable_footer(self, maxes):
         return self._get_printable_row(self.footer, maxes)
-        
+
     def _get_printable_border(self, maxes):
         return '+-' + '-+-'.join(['-' * m for m in maxes]) + '-+'
 
     def get_table(self):
         lines = []
         maxes = self._calc_maxes()
-        
+
         if self.header:
             lines.append(self._get_printable_border(maxes))
             lines.append(self._get_printable_header(maxes))
-            
+
         lines.append(self._get_printable_border(maxes))
-        
+
         for row in self.rows:
             lines.append(self._get_printable_row(row, maxes))
-            
+
         if self.footer:
             lines.append(self._get_printable_border(maxes))
             lines.append(self._get_printable_footer(maxes))
-            
+
         lines.append(self._get_printable_border(maxes))
-        
+
         return lines
 
     def print_table(self):
         lines = self.get_table()
         for line in lines:
             print(line)
-                
-                                                                                                                   
+
+
 
 DEFAULT_NODE_ATTRIBUTES = set(['id', 'type', 'depth', 'active'])
 
@@ -136,7 +136,7 @@ class Unify:
 
 
 class ProofGraph:
-    
+
     ## @param pg An elment of ElementTree which is tagged "proofgraph".
     def __init__(self, pg):
         nodes = [Node(n) for n in pg.find('literals').getiterator('literal')]
@@ -147,16 +147,14 @@ class ProofGraph:
         self.objective = float(pg.get('objective'))
         self.time = dict(pg.find('time').items())
         self.timeout = dict(pg.find('timeout').items())
-        
+
         self.nodes = dict([(n.id, n) for n in nodes])
         self.chains = dict([(c.id, c) for c in chains])
         self.unifs = [Unify(u) for u in pg.getiterator('unification')]
 
 
 class Configure:
-    def __init__(self, root):
-        conf = root.find('configure')
-        self.components = dict(conf.find('components').items())
-        self.params = dict(conf.find('params').items())
-
-
+    def __init__(self, xconf):
+        conf = xconf
+        self.components = dict(xconf.find('components').items())
+        self.params = dict(xconf.find('params').items())

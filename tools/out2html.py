@@ -309,6 +309,10 @@ def main():
         '--split', '-s',
         help='Generate HTMLs for each proof-graph, where SPLIT is prefix of file path')
     parser.add_argument(
+        '--target-ith', '-t',
+        type=int,
+        help='Generate a proof graph for only i-th <proofgraph> tag.')
+    parser.add_argument(
         '--show-only-unified-obs', '-u', action="store_true",
         help='Output only observable literals unified with something.')
     parser.add_argument(
@@ -316,14 +320,20 @@ def main():
         help='Set the path of visjs. (default: \"./visjs/dist/vis.min.js\")')
 
     args = parser.parse_args()
+    graphs = []
+    graph_no = 1
 
-    if args.input:
-        root = et.parse(args.input).getroot()
-    else:
-        root = et.fromstring(sys.stdin.read())
+    for act, elem in et.iterparse(open(args.input) if args.input else sys.stdin):
 
-    conf = util.Configure(root)
-    graphs = [ProofGraph(pg, output_unifiedobs_only=args.show_only_unified_obs) for pg in root.getiterator('proofgraph')]
+        if elem.tag == "configure":
+            conf = util.Configure(elem)
+
+        elif elem.tag == "proofgraph":
+            if None == args.target_ith or graph_no == args.target_ith:
+                graphs += [ProofGraph(elem, output_unifiedobs_only=args.show_only_unified_obs)]
+
+            print >>sys.stderr, "Graph", graph_no, "loaded."
+            graph_no += 1
 
     if args.split:
         prefix = args.split
