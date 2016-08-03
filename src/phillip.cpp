@@ -161,7 +161,7 @@ int phillip_main_t::learn(const lf::input_t &input)
 
     // Update the weights.
     for(auto bad_sol: bad_sols) {
-        if(m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function() >= param_float("margin", 0.0)) continue;
+        if(m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function() > param_float("margin", 0.0)) continue;
 
         util::print_console_fmt("Margin: %f", m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function());
 
