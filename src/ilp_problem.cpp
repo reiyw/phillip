@@ -1183,24 +1183,46 @@ void ilp_solution_t::enumerate_unified_terms_sets(std::list<hash_set<term_t> > *
 
         if (not has_merged) break;
     }
+
 }
 
+
+void _getRepresentative(hash_map<term_t, term_t> *out, const std::list<hash_set<term_t> > &in)
+{
+  for(auto terms: in) {
+
+    // By default.
+    term_t repr = *terms.begin();
+
+    // Find a constant.
+    for(auto t: terms) {
+      if(t.is_constant()) { repr = t; break; }
+    }
+
+    for(auto t: terms) {
+      (*out)[t] = repr;
+    }
+
+  }
+}
 
 void ilp_solution_t::get_reduced_sol(std::set<literal_t> *p_literals, std::set<literal_t> *p_non_eqs, const std::list< hash_set<term_t> > &terms) const {
 
     const ilp_problem_t *prob = problem();
     const pg::proof_graph_t *graph = prob->proof_graph();
+    hash_map<term_t, term_t> t2r;
+
+    _getRepresentative(&t2r, terms);
 
     auto reguralized =
-        [](const std::list<hash_set<term_t> > &terms, const literal_t &lit) -> literal_t
+        [&t2r](const std::list<hash_set<term_t> > &terms, const literal_t &lit) -> literal_t
     {
         literal_t out(lit);
         for (term_idx_t i = 0; i < out.terms.size(); ++i)
         {
-            for (auto set : terms)
-            if (set.count(out.terms.at(i)) > 0)
+            if (t2r.count(out.terms.at(i)) > 0)
             {
-                out.terms[i] = *set.begin();
+                out.terms[i] = t2r[out.terms.at(i)];
                 break;
             }
         }
