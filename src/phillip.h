@@ -107,6 +107,7 @@ public:
     inline bool check_validity() const;
 
     void load_tuned_parameters();
+    void load_dynamic_weight_parameters();
 
     void write_accuracy(int, int) const;
     void write_tuned_parameters() const;

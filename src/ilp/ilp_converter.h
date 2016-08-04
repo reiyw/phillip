@@ -93,6 +93,7 @@ public:
         util::xml_element_t *out);
     virtual void print_tuned_parameters(std::ostream*) const;
     virtual void load_tuned_parameters(std::istream*) const;
+    virtual void load_dynamic_weight_parameters(std::istream*);
 
     inline std::vector<double> get_weights(
         const pg::proof_graph_t*, pg::edge_idx_t) const;
@@ -101,6 +102,7 @@ protected:
     double m_default_observation_cost;
     bool m_is_logarithmic;
     weight_provider_t *m_weight_provider;
+    hash_map<std::string, double> m_dynamic_weight_map;
 };
 
 

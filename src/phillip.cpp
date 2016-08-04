@@ -312,6 +312,18 @@ void phillip_main_t::load_tuned_parameters() {
 }
 
 
+void phillip_main_t::load_dynamic_weight_parameters() {
+
+    if(param("dynamic_weight") != "") {
+        util::print_console_fmt("Loading dynamic weight map from %s...", param("dynamic_weight").c_str());
+        std::ifstream fi(param("dynamic_weight"));
+        ilp_convertor()->load_dynamic_weight_parameters(&fi);
+        fi.close();
+    }
+
+}
+
+
 void phillip_main_t::write_header() const
 {
     auto write = [this](std::ostream *os)

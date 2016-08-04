@@ -190,6 +190,7 @@ void execute(
         bool flag_printing(false);
 
         phillip->load_tuned_parameters();
+        phillip->load_dynamic_weight_parameters();
 
         util::print_console("Loading observations ...");
 

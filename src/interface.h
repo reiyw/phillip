@@ -66,6 +66,7 @@ public:
         util::xml_element_t *out) {};
     virtual void print_tuned_parameters(std::ostream* = &std::cout) const {};
     virtual void load_tuned_parameters(std::istream*) const {};
+    virtual void load_dynamic_weight_parameters(std::istream*) {};
 
 protected:
     /** Converts proof-graph's structure into ILP problem. */
