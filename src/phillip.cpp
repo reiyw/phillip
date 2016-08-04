@@ -165,8 +165,7 @@ int phillip_main_t::learn(const lf::input_t &input)
 
         util::print_console_fmt("Margin: %f", m_sol[bad_sol].value_of_objective_function() - m_sol[good_sol].value_of_objective_function());
 
-        m_ilp_convertor->tune(m_sol[bad_sol], m_sol[good_sol], &elem);
-        num_updates++;
+        num_updates += m_ilp_convertor->tune(m_sol[bad_sol], m_sol[good_sol], &elem);
     }
 
     m_time_for_learn = util::duration_time(begin);

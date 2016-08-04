@@ -438,7 +438,8 @@ int weighted_converter_t::tune(
         // Update the current weight.
         std::vector<double> weights((*m_weight_provider)(graph, e));
         bool fPromote = prob->edge_is_active(gold, e);
-        double update = 0.1 * (fPromote ? -1.0 : 1.0);
+        double update = fPromote ? -1.0 : 1.0, objdiff = gold.value_of_objective_function() - sys.value_of_objective_function();
+        update *= objdiff;
 
         util::print_console((fPromote ? "PROMOTE: " : "SUPPRESS: ") + graph->edge_to_string(e));
 

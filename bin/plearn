@@ -6,6 +6,7 @@ import glob
 import csv
 import collections
 import optparse
+import re
 
 PHILDIR = os.path.dirname(__file__)
 
@@ -68,10 +69,23 @@ def main():
             weights, count = aggregateWeights(glob.glob("%s/model.tsv.part_*" % options.workdir))
             writeAveragedWeights(f_dist, weights, count)
 
+        # Check the convergence.
+        updates = 0
+
+        for ln in os.popen("grep Updates: %s/learn.log.txt.part_*" % options.workdir):
+            updates += int(re.findall("Updates: ([0-9]+)", ln)[0])
+
         os.system("cd %s; cp model.tsv model.i%d.tsv" % (options.workdir, 1+it))
 
         if options.output != None:
             os.system("cp %s/model.tsv %s" % (options.workdir, options.output))
+
+        print >>sys.stderr, "Updates:", updates
+
+        if 0 == updates:
+            print >>sys.stderr, "Converged."
+            break
+
 
 if "__main__" == __name__:
     main()
