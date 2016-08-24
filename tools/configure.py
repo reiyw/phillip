@@ -4,7 +4,7 @@ import sys
 
 
 def get_bin_target():
-    target = raw_input('--> BINARY TARGET [default=bin/phil]: ')    
+    target = raw_input('--> BINARY TARGET [default=bin/phil]: ')
     return target if target else 'bin/phil'
 
 
@@ -19,13 +19,15 @@ def get_dir(path):
 def ask_yes_no(query):
     while True:
         ans = raw_input('--> %s [y/n]: ' % query).lower()
-        if ans in ('yes', 'y'): return True;
-        if ans in ('no', 'n'):  return False;
+        if ans in ('yes', 'y'):
+            return True
+        if ans in ('no', 'n'):
+            return False
 
 
 def write_main(target_bin, do_use_lpsolve, do_use_gurobi):
     cmd_test = ''
-    
+
     with open('Makefile', 'w') as fout:
         fout.write('\n'.join([
             'CXX = g++',
@@ -109,20 +111,20 @@ def write_example(dir, do_use_lpsolve, do_use_gurobi):
             'clean:',
             '\trm -f $(TARGET)',
             '\trm -f $(OBJS)',
-            '',]))
+            '', ]))
 
 
 def main():
     print '*** Configuration of Phillip ***'
 
     target = get_bin_target()
-    
+
     do_use_lpsolve = ask_yes_no('USE-LP-SOLVE')
     do_use_gurobi = ask_yes_no('USE-GUROBI')
 
     write_main(target, do_use_lpsolve, do_use_gurobi)
     write_example('examples/my_ilp', do_use_lpsolve, do_use_gurobi)
 
-    
-if(__name__=='__main__'):
+
+if __name__ == '__main__':
     main()
