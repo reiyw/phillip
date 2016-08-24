@@ -17,6 +17,7 @@ This is a forked project. The original project is Phillip, which is maintained b
 1. Install ILP-solver (Gurobi 6.0.X or LP-Solve 5.5) which you want to use.
 2. Move to the directory where Phillip is installed.
 2. Execute `python tools/configure.py`. Then makefile will be created.
+    - If you have any errors, run `pip install future`
 3. Configure environment variables:  
     - If you use LP-Solve, add the path of the header directory of LP-Solve to `CPLUS_INCLUDE_PATH`.
     - If you use Gurobi optimizer, add the path of directory of Gurobi to `GUROBI_HOME`, `$GUROBI_HOME/include` to `CPLUS_INCLUDE_PATH` and `$GUROBI_HOME/lib` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`.

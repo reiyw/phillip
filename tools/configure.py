@@ -2,9 +2,11 @@
 
 import sys
 
+from builtins import input
+
 
 def get_bin_target():
-    target = raw_input('--> BINARY TARGET [default=bin/phil]: ')
+    target = input('--> BINARY TARGET [default=bin/phil]: ')
     return target if target else 'bin/phil'
 
 
@@ -18,7 +20,7 @@ def get_dir(path):
 
 def ask_yes_no(query):
     while True:
-        ans = raw_input('--> %s [y/n]: ' % query).lower()
+        ans = input('--> %s [y/n]: ' % query).lower()
         if ans in ('yes', 'y'):
             return True
         if ans in ('no', 'n'):
@@ -115,7 +117,7 @@ def write_example(dir, do_use_lpsolve, do_use_gurobi):
 
 
 def main():
-    print '*** Configuration of Phillip ***'
+    print('*** Configuration of Phillip ***')
 
     target = get_bin_target()
 
